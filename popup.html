@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ChangeDetection.io Monitor</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>ChangeDetection.io</h1>
+      <button id="settingsBtn" class="settings-btn" title="Settings">⚙️</button>
+    </header>
+    
+    <div id="loadingState" class="loading">
+      <div class="spinner"></div>
+      <p>Loading watches...</p>
+    </div>
+    
+    <div id="errorState" class="error" style="display: none;">
+      <p id="errorMessage"></p>
+      <button id="retryBtn" class="retry-btn">Retry</button>
+    </div>
+    
+    <div id="noConfigState" class="no-config" style="display: none;">
+      <p>Please configure your server URL and API key first.</p>
+      <button id="configureBtn" class="configure-btn">Configure</button>
+    </div>
+    
+    <div id="watchesList" class="watches-list" style="display: none;">
+      <div id="watchesContainer"></div>
+      <div class="footer">
+        <button id="refreshBtn" class="refresh-btn">🔄 Refresh</button>
+      </div>
+    </div>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>
