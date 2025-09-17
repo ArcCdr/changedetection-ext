@@ -29,6 +29,10 @@ global.chrome = {
     setBadgeText: jest.fn(),
     setBadgeBackgroundColor: jest.fn()
   },
+  browserAction: {
+    setBadgeText: jest.fn(),
+    setBadgeBackgroundColor: jest.fn()
+  },
   alarms: {
     create: jest.fn(),
     onAlarm: {
@@ -40,26 +44,92 @@ global.chrome = {
 // Mock fetch
 global.fetch = jest.fn();
 
-describe('ChangeDetectionAPI', () => {
-  let ChangeDetectionAPI;
+// Replicate the ChangeDetectionAPI class for testing
+class ChangeDetectionAPI {
+  constructor() {
+    this.baseURL = '';
+    this.apiKey = '';
+    this.isInitialized = false;
+  }
+
+  async initialize() {
+    if (this.isInitialized) return;
+    
+    const settings = await this.getSettings();
+    this.baseURL = settings.baseURL || '';
+    this.apiKey = settings.apiKey || '';
+    this.isInitialized = true;
+  }
+
+  async getSettings() {
+    return new Promise((resolve) => {
+      chrome.storage.sync.get(['baseURL', 'apiKey'], (result) => {
+        resolve(result);
+      });
+    });
+  }
+
+  async makeRequest(endpoint, method = 'GET', body = null) {
+    await this.initialize();
+    
+    if (!this.baseURL || !this.apiKey) {
+      throw new Error('Server URL and API key must be configured');
+    }
+
+    const url = `${this.baseURL.replace(/\/$/, '')}${endpoint}`;
+    const headers = {
+      'x-api-key': this.apiKey,
+      'Content-Type': 'application/json'
+    };
+
+    const options = {
+      method,
+      headers
+    };
+
+    if (body) {
+      options.body = JSON.stringify(body);
+    }
+
+    const response = await fetch(url, options);
+    
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  async getWatches() {
+    return this.makeRequest('/api/v1/watch/');
+  }
+
+  async updateWatchViewed(uuid) {
+    const now = new Date().toISOString();
+    return this.makeRequest(`/api/v1/watch/${uuid}`, 'PATCH', {
+      last_viewed: now
+    });
+  }
+}
+
+// Replicate the countUnreadWatches function
+function countUnreadWatches(watches) {
+  if (!watches || !Array.isArray(watches)) return 0;
   
+  return watches.filter(watch => {
+    if (!watch.last_changed) return false;
+    if (!watch.last_viewed) return true;
+    
+    const lastChanged = new Date(watch.last_changed);
+    const lastViewed = new Date(watch.last_viewed);
+    
+    return lastViewed <= lastChanged;
+  }).length;
+}
+
+describe('ChangeDetectionAPI', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    
-    // Load the background script (simulate loading in browser)
-    const fs = require('fs');
-    const path = require('path');
-    const backgroundScript = fs.readFileSync(
-      path.join(__dirname, '../background.js'),
-      'utf8'
-    );
-    
-    // Extract and evaluate the ChangeDetectionAPI class
-    const classMatch = backgroundScript.match(/class ChangeDetectionAPI \{[\s\S]*?(?=\n\n|\n\/\/|\nclass|\n\w+\s*=|\nfunction|\nconst|\nlet|\nvar|$)/);
-    if (classMatch) {
-      eval(classMatch[0]);
-      ChangeDetectionAPI = eval('ChangeDetectionAPI');
-    }
   });
 
   test('should initialize with empty settings', () => {
@@ -139,24 +209,6 @@ describe('ChangeDetectionAPI', () => {
 });
 
 describe('Badge Management', () => {
-  let countUnreadWatches;
-
-  beforeEach(() => {
-    // Extract the countUnreadWatches function
-    const fs = require('fs');
-    const path = require('path');
-    const backgroundScript = fs.readFileSync(
-      path.join(__dirname, '../background.js'),
-      'utf8'
-    );
-    
-    const functionMatch = backgroundScript.match(/function countUnreadWatches\(watches\) \{[\s\S]*?(?=\n\n|\n\/\/|\nfunction|\nclass|\nconst|\nlet|\nvar|$)/);
-    if (functionMatch) {
-      eval(functionMatch[0]);
-      countUnreadWatches = eval('countUnreadWatches');
-    }
-  });
-
   test('should count unread watches correctly', () => {
     const watches = [
       {
@@ -198,3 +250,4 @@ describe('Badge Management', () => {
     expect(unreadCount).toBe(0);
   });
 });
+

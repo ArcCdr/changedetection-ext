@@ -1,5 +1,5 @@
 {
-  "manifest_version": 3,
+  "manifest_version": 2,
   "name": "ChangeDetection.io Monitor",
   "version": "1.0.0",
   "description": "Monitor your changedetection.io watches directly from your browser",
@@ -8,19 +8,17 @@
     "storage",
     "activeTab",
     "tabs",
-    "alarms"
-  ],
-  
-  "host_permissions": [
+    "alarms",
     "http://*/*",
     "https://*/*"
   ],
   
   "background": {
-    "service_worker": "background.js"
+    "scripts": ["background.js"],
+    "persistent": false
   },
   
-  "action": {
+  "browser_action": {
     "default_popup": "popup.html",
     "default_title": "ChangeDetection.io Monitor",
     "default_icon": {
@@ -52,10 +50,5 @@
     "128": "icons/icon128.png"
   },
   
-  "web_accessible_resources": [
-    {
-      "resources": ["icons/*"],
-      "matches": ["<all_urls>"]
-    }
-  ]
+  "web_accessible_resources": []
 }

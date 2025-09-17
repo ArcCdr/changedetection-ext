@@ -8,11 +8,16 @@
     "test:watch": "jest --watch",
     "lint": "eslint *.js",
     "lint:fix": "eslint *.js --fix",
-    "build": "npm run lint && npm test",
-    "dev:firefox": "web-ext run --source-dir=. --firefox-profile=test-profile",
-    "dev:chrome": "echo 'Load unpacked extension in Chrome from this directory'",
-    "package:firefox": "web-ext build --source-dir=. --artifacts-dir=dist",
-    "package:chrome": "zip -r dist/chrome-extension.zip . -x '*.git*' 'node_modules/*' 'dist/*' '*.md' 'package*.json' '.eslintrc.js' 'jest.config.js' '__tests__/*'"
+    "build": "npm run lint && npm test && npm run build:chrome",
+    "build:chrome": "mkdir -p dist && cp manifest.json background.js popup.html popup.js popup.css options.html options.js options.css content.js dist/ && cp -r icons dist/",
+    "build:firefox": "mkdir -p dist-firefox && cp manifest-v2.json dist-firefox/manifest.json && cp background.js popup.html popup.js popup.css options.html options.js options.css content.js dist-firefox/ && cp -r icons dist-firefox/",
+    "package": "npm run package:chrome && npm run package:firefox",
+    "package:chrome": "npm run build:chrome && cd dist && zip -r ../changedetection-extension-chrome-v1.0.0.zip . -x '*.DS_Store' '*.git*'",
+    "package:firefox": "npm run build:firefox && cd dist-firefox && zip -r ../changedetection-extension-firefox-v1.0.0.zip . -x '*.DS_Store' '*.git*'",
+    "dev:firefox": "echo 'Firefox: Use manifest-v2.json -> about:debugging -> Load Temporary Add-on -> select manifest-v2.json'",
+    "dev:chrome": "echo 'Chrome: Load dist/ directory -> chrome://extensions/ -> Enable Developer mode -> Load unpacked -> select dist/ directory'",
+    "firefox-setup": "cp manifest-v2.json manifest.json && echo 'Switched to Firefox-compatible manifest. Load extension normally.'",
+    "chrome-setup": "git checkout manifest.json 2>/dev/null || echo 'Using default Chrome manifest'"
   },
   "keywords": [
     "browser-extension",
@@ -26,14 +31,18 @@
   "devDependencies": {
     "eslint": "^8.0.0",
     "jest": "^27.5.1",
-    "jest-environment-jsdom": "^27.5.1",
     "jest-chrome": "^0.8.0",
+    "jest-environment-jsdom": "^27.5.1",
     "web-ext": "^7.0.0"
   },
   "jest": {
     "testEnvironment": "jsdom",
-    "setupFilesAfterEnv": ["jest-chrome"],
-    "testMatch": ["**/__tests__/**/*.test.js"]
+    "setupFilesAfterEnv": [
+      "jest-chrome"
+    ],
+    "testMatch": [
+      "**/__tests__/**/*.test.js"
+    ]
   },
   "eslintConfig": {
     "env": {
@@ -48,7 +57,12 @@
       "sourceType": "module"
     },
     "rules": {
-      "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+      "no-unused-vars": [
+        "error",
+        {
+          "argsIgnorePattern": "^_"
+        }
+      ],
       "no-console": "off"
     },
     "globals": {

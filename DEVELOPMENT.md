@@ -13,10 +13,12 @@
    - Click "Load unpacked"
    - Select this directory
 
-3. **Load extension in Firefox**:
-   ```bash
-   npm run dev:firefox
-   ```
+3. **Load extension in Firefox** (Manual):
+   - Open `about:debugging` in Firefox
+   - Click "This Firefox"
+   - Click "Load Temporary Add-on..."
+   - Select `manifest.json` from this directory
+   - Note: Firefox MV3 support is experimental
 
 ## Development Workflow
 

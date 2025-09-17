@@ -31,19 +31,19 @@ A browser extension that integrates with [changedetection.io](https://github.com
 
 3. **Build the extension**:
    ```bash
-   npm run build
+   npm run build:chrome
    ```
 
 4. **Load in Chrome**:
    - Open `chrome://extensions/`
    - Enable "Developer mode"
    - Click "Load unpacked"
-   - Select the extension directory
+   - Select the `dist` directory (not the main project directory)
 
-5. **Load in Firefox**:
-   ```bash
-   npm run dev:firefox
-   ```
+5. **Load in Firefox** (Use Firefox manifest):
+   - See [FIREFOX.md](FIREFOX.md) for detailed instructions
+   - Quick: Use `manifest-firefox.json` in `about:debugging`
+   - Or run: `cp manifest-firefox.json manifest.json` then load normally
 
 ### Create Icon Files
 
@@ -179,11 +179,13 @@ Test coverage includes:
 
 | Feature | Chrome | Firefox |
 |---------|--------|---------|
-| Manifest V3 | ✅ | ✅ |
-| Service Worker | ✅ | ✅ |
+| Manifest V3 | ✅ | ⚠️ (Experimental) |
+| Service Worker | ✅ | ⚠️ (Limited) |
 | Storage API | ✅ | ✅ |
 | Badge API | ✅ | ✅ |
 | Tabs API | ✅ | ✅ |
+
+**Note**: Firefox's Manifest V3 support is still experimental. The extension works but requires manual loading via `about:debugging`.
 
 ## Troubleshooting
 

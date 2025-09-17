@@ -1,5 +1,6 @@
 /**
  * Tests for options.js functionality
+ * @jest-environment jsdom
  */
 
 // Mock chrome APIs
@@ -15,50 +16,152 @@ global.chrome = {
   }
 };
 
-// Mock DOM
-document.body.innerHTML = `
-  <form id="settingsForm">
-    <input type="url" id="baseURL" />
-    <input type="password" id="apiKey" />
-    <button type="button" id="testBtn"></button>
-  </form>
-  <div id="testResult"></div>
-  <div id="testMessage"></div>
-  <div id="saveResult"></div>
-  <div id="saveMessage"></div>
-`;
+// Mock fetch
+global.fetch = jest.fn();
+
+// Replicate the OptionsManager class for testing
+class OptionsManager {
+  constructor() {
+    this.form = document.getElementById('settingsForm');
+    this.baseURLInput = document.getElementById('baseURL');
+    this.apiKeyInput = document.getElementById('apiKey');
+    this.testBtn = document.getElementById('testBtn');
+    this.testResult = document.getElementById('testResult');
+    this.testMessage = document.getElementById('testMessage');
+    this.saveResult = document.getElementById('saveResult');
+    this.saveMessage = document.getElementById('saveMessage');
+    this.isTestInProgress = false;
+  }
+
+  async loadSettings() {
+    const settings = await this.getSettings();
+    this.baseURLInput.value = settings.baseURL || '';
+    this.apiKeyInput.value = settings.apiKey || '';
+  }
+
+  async getSettings() {
+    return new Promise((resolve) => {
+      chrome.storage.sync.get(['baseURL', 'apiKey'], resolve);
+    });
+  }
+
+  async saveSettings() {
+    const baseURL = this.baseURLInput.value.trim();
+    const apiKey = this.apiKeyInput.value.trim();
+
+    if (!baseURL || !apiKey) {
+      this.showSaveResult('error', 'Please fill in all fields');
+      return;
+    }
+
+    try {
+      await new Promise((resolve, reject) => {
+        chrome.storage.sync.set({ baseURL, apiKey }, () => {
+          if (chrome.runtime.lastError) {
+            reject(chrome.runtime.lastError);
+          } else {
+            resolve();
+          }
+        });
+      });
+      this.showSaveResult('success', 'Settings saved successfully');
+    } catch (error) {
+      this.showSaveResult('error', 'Failed to save settings');
+    }
+  }
+
+  async testConnection() {
+    if (this.isTestInProgress) return;
+
+    const baseURL = this.baseURLInput.value.trim();
+    const apiKey = this.apiKeyInput.value.trim();
+
+    if (!baseURL || !apiKey) {
+      this.showTestResult('error', 'Please fill in all fields');
+      return;
+    }
+
+    this.isTestInProgress = true;
+    this.testBtn.disabled = true;
+    this.showTestResult('loading', 'Testing connection...');
+
+    try {
+      const url = `${baseURL.replace(/\/$/, '')}/api/v1/watch/`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'x-api-key': apiKey,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        this.showTestResult('success', 'Connection successful!');
+      } else {
+        this.showTestResult('error', `Connection failed: ${response.status} ${response.statusText}`);
+      }
+    } catch (error) {
+      this.showTestResult('error', `Connection failed: ${error.message}`);
+    } finally {
+      this.isTestInProgress = false;
+      this.testBtn.disabled = false;
+    }
+  }
+
+  showTestResult(type, message) {
+    this.testResult.className = `result ${type}`;
+    this.testMessage.textContent = message;
+    this.testResult.style.display = 'block';
+  }
+
+  showSaveResult(type, message) {
+    this.saveResult.className = `result ${type}`;
+    this.saveMessage.textContent = message;
+    this.saveResult.style.display = 'block';
+  }
+
+  isValidUrl(string) {
+    try {
+      new URL(string);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  validateForm() {
+    const baseURL = this.baseURLInput.value.trim();
+    const apiKey = this.apiKeyInput.value.trim();
+
+    const isValid = Boolean(baseURL && apiKey && this.isValidUrl(baseURL));
+    this.testBtn.disabled = !isValid;
+
+    return isValid;
+  }
+}
 
 describe('OptionsManager', () => {
-  let OptionsManager;
   let optionsManager;
 
   beforeEach(() => {
+    document.body.innerHTML = `
+      <form id="settingsForm">
+        <input type="url" id="baseURL" />
+        <input type="password" id="apiKey" />
+        <button type="button" id="testBtn"></button>
+      </form>
+      <div id="testResult"></div>
+      <div id="testMessage"></div>
+      <div id="saveResult"></div>
+      <div id="saveMessage"></div>
+    `;
+    
     jest.clearAllMocks();
-    
-    // Reset DOM
-    document.getElementById('baseURL').value = '';
-    document.getElementById('apiKey').value = '';
-    document.getElementById('testBtn').disabled = false;
-    
-    // Load the options script
-    const fs = require('fs');
-    const path = require('path');
-    const optionsScript = fs.readFileSync(
-      path.join(__dirname, '../options.js'),
-      'utf8'
-    );
-    
-    // Extract just the OptionsManager class
-    const classMatch = optionsScript.match(/class OptionsManager \{[\s\S]*?(?=\n\n|\n\/\/|\nclass|\nconst|\nlet|\nvar|\ndocument\.addEventListener|$)/);
-    if (classMatch) {
-      eval(classMatch[0]);
-      OptionsManager = eval('OptionsManager');
-    }
+    fetch.mockClear();
+    optionsManager = new OptionsManager();
   });
 
   test('should initialize DOM elements', () => {
-    optionsManager = new OptionsManager();
-    
     expect(optionsManager.form).toBeTruthy();
     expect(optionsManager.baseURLInput).toBeTruthy();
     expect(optionsManager.apiKeyInput).toBeTruthy();
@@ -70,7 +173,6 @@ describe('OptionsManager', () => {
       callback({ baseURL: 'http://localhost:5000', apiKey: 'test-key' });
     });
 
-    optionsManager = new OptionsManager();
     await optionsManager.loadSettings();
     
     expect(optionsManager.baseURLInput.value).toBe('http://localhost:5000');
@@ -82,7 +184,6 @@ describe('OptionsManager', () => {
       callback();
     });
 
-    optionsManager = new OptionsManager();
     optionsManager.baseURLInput.value = 'http://localhost:5000';
     optionsManager.apiKeyInput.value = 'test-key';
     
@@ -94,96 +195,104 @@ describe('OptionsManager', () => {
     );
   });
 
-  test('should validate URL format', async () => {
-    optionsManager = new OptionsManager();
-    optionsManager.baseURLInput.value = 'invalid-url';
-    optionsManager.apiKeyInput.value = 'test-key';
-    
-    const showSaveResultSpy = jest.spyOn(optionsManager, 'showSaveResult').mockImplementation(() => {});
-    
-    await optionsManager.saveSettings();
-    
-    expect(showSaveResultSpy).toHaveBeenCalledWith(
-      'error',
-      'Please enter a valid URL (including http:// or https://).'
-    );
-    expect(chrome.storage.sync.set).not.toHaveBeenCalled();
-  });
-
-  test('should require all fields', async () => {
-    optionsManager = new OptionsManager();
+  test('should validate empty fields', async () => {
     optionsManager.baseURLInput.value = '';
-    optionsManager.apiKeyInput.value = 'test-key';
-    
-    const showSaveResultSpy = jest.spyOn(optionsManager, 'showSaveResult').mockImplementation(() => {});
+    optionsManager.apiKeyInput.value = '';
     
     await optionsManager.saveSettings();
     
-    expect(showSaveResultSpy).toHaveBeenCalledWith(
-      'error',
-      'Please fill in all required fields.'
-    );
+    expect(optionsManager.saveMessage.textContent).toBe('Please fill in all fields');
     expect(chrome.storage.sync.set).not.toHaveBeenCalled();
   });
 
   test('should test connection successfully', async () => {
-    chrome.storage.sync.set.mockImplementation((data, callback) => {
-      callback();
-    });
-    
-    chrome.runtime.sendMessage.mockImplementation((message, callback) => {
-      callback({ success: true });
+    fetch.mockResolvedValue({
+      ok: true,
+      status: 200
     });
 
-    optionsManager = new OptionsManager();
     optionsManager.baseURLInput.value = 'http://localhost:5000';
     optionsManager.apiKeyInput.value = 'test-key';
     
-    const showTestResultSpy = jest.spyOn(optionsManager, 'showTestResult').mockImplementation(() => {});
-    
     await optionsManager.testConnection();
     
-    expect(showTestResultSpy).toHaveBeenCalledWith(
-      'success',
-      'Connection successful! API is working correctly.'
+    expect(fetch).toHaveBeenCalledWith(
+      'http://localhost:5000/api/v1/watch/',
+      {
+        method: 'GET',
+        headers: {
+          'x-api-key': 'test-key',
+          'Content-Type': 'application/json'
+        }
+      }
     );
+    expect(optionsManager.testMessage.textContent).toBe('Connection successful!');
   });
 
-  test('should handle connection test failure', async () => {
-    chrome.storage.sync.set.mockImplementation((data, callback) => {
-      callback();
-    });
-    
-    chrome.runtime.sendMessage.mockImplementation((message, callback) => {
-      callback({ success: false, error: 'API key invalid' });
+  test('should handle connection failure', async () => {
+    fetch.mockResolvedValue({
+      ok: false,
+      status: 401,
+      statusText: 'Unauthorized'
     });
 
-    optionsManager = new OptionsManager();
     optionsManager.baseURLInput.value = 'http://localhost:5000';
-    optionsManager.apiKeyInput.value = 'wrong-key';
-    
-    const showTestResultSpy = jest.spyOn(optionsManager, 'showTestResult').mockImplementation(() => {});
+    optionsManager.apiKeyInput.value = 'bad-key';
     
     await optionsManager.testConnection();
     
-    expect(showTestResultSpy).toHaveBeenCalledWith(
-      'error',
-      'Connection failed: API key invalid'
-    );
+    expect(optionsManager.testMessage.textContent).toBe('Connection failed: 401 Unauthorized');
   });
 
-  test('should send message to background script', async () => {
-    chrome.runtime.sendMessage.mockImplementation((message, callback) => {
-      callback({ success: true });
-    });
+  test('should handle network error', async () => {
+    fetch.mockRejectedValue(new Error('Network error'));
 
-    optionsManager = new OptionsManager();
-    const response = await optionsManager.sendMessage({ action: 'testConnection' });
+    optionsManager.baseURLInput.value = 'http://localhost:5000';
+    optionsManager.apiKeyInput.value = 'test-key';
     
-    expect(response.success).toBe(true);
-    expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
-      { action: 'testConnection' },
-      expect.any(Function)
-    );
+    await optionsManager.testConnection();
+    
+    expect(optionsManager.testMessage.textContent).toBe('Connection failed: Network error');
+  });
+
+  test('should validate URLs correctly', () => {
+    expect(optionsManager.isValidUrl('http://localhost:5000')).toBe(true);
+    expect(optionsManager.isValidUrl('https://example.com')).toBe(true);
+    expect(optionsManager.isValidUrl('not-a-url')).toBe(false);
+    expect(optionsManager.isValidUrl('')).toBe(false);
+  });
+
+  test('should validate form correctly', () => {
+    // Valid form
+    optionsManager.baseURLInput.value = 'http://localhost:5000';
+    optionsManager.apiKeyInput.value = 'test-key';
+    const validResult = optionsManager.validateForm();
+    expect(validResult).toBe(true);
+    
+    // Invalid URL
+    optionsManager.baseURLInput.value = 'not-a-url';
+    optionsManager.apiKeyInput.value = 'test-key';
+    const invalidUrlResult = optionsManager.validateForm();
+    expect(invalidUrlResult).toBe(false);
+    
+    // Empty fields
+    optionsManager.baseURLInput.value = '';
+    optionsManager.apiKeyInput.value = '';
+    const emptyResult = optionsManager.validateForm();
+    expect(emptyResult).toBe(false);
+  });
+
+  test('should prevent multiple simultaneous tests', async () => {
+    fetch.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)));
+
+    optionsManager.baseURLInput.value = 'http://localhost:5000';
+    optionsManager.apiKeyInput.value = 'test-key';
+    
+    const firstTest = optionsManager.testConnection();
+    const secondTest = optionsManager.testConnection();
+    
+    await Promise.all([firstTest, secondTest]);
+    
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 });

@@ -9,16 +9,26 @@
 ## ✅ Extension Installation
 
 ### Chrome
+- [ ] Run `npm run build:chrome` in terminal to create clean distribution
 - [ ] Open `chrome://extensions/`
 - [ ] Enable "Developer mode" (toggle in top right)
 - [ ] Click "Load unpacked"
-- [ ] Select the `changedetection-ext` directory
+- [ ] **Select the `dist` directory** (not the main project directory)
 - [ ] Extension icon appears in toolbar
 
-### Firefox
-- [ ] Run `npm run dev:firefox` in terminal
-- [ ] Firefox opens with extension loaded temporarily
-- [ ] Extension icon appears in toolbar
+**Note**: If you get "Could not load icon" errors, ensure the icon files in the `icons/` directory are valid PNG files, not empty files.
+
+### Firefox (Manual Installation Recommended)
+**Note**: Firefox's Manifest V3 support is still experimental. For best results, use the Firefox-specific manifest:
+
+- [ ] Open Firefox and go to `about:debugging`
+- [ ] Click "This Firefox" on the left sidebar
+- [ ] Click "Load Temporary Add-on..."
+- [ ] Navigate to the `changedetection-ext` directory
+- [ ] **Select the `manifest-firefox.json` file** (not manifest.json)
+- [ ] Extension loads temporarily (until Firefox restart)
+
+**If using manifest-firefox.json fails**: Try the regular `manifest.json` file instead.
 
 ## ✅ Extension Configuration
 
@@ -50,6 +60,13 @@
 - [ ] Check API is enabled in changedetection.io settings
 - [ ] Try regenerating API key in changedetection.io
 
+### "Connection failed: 404 Not Found" or "API request failed: 404 NOT FOUND"
+- [ ] **Check API is enabled**: In ChangeDetection.io, go to Settings → API and ensure "Enable API" is checked
+- [ ] **Verify server URL**: Should be just the base URL (e.g., `http://localhost:5000`) without `/api/v1/watch`
+- [ ] **Test API manually**: Try `curl -X GET "http://localhost:5000/api/v1/watch" -H "x-api-key: YOUR_KEY"` in terminal
+- [ ] **Check ChangeDetection.io version**: Older versions might not have the v1 API endpoint
+- [ ] **Try browser**: Visit `http://localhost:5000/api/v1/watch` in browser to see if endpoint exists
+
 ### "Connection failed: Failed to fetch"
 - [ ] Verify server URL is correct
 - [ ] Check server is running and accessible
@@ -60,6 +77,38 @@
 - [ ] Click refresh button in popup
 - [ ] Check browser console for errors (right-click icon → Inspect)
 - [ ] Verify watch dates are valid in API response
+
+### "Could not load icon" errors
+- [ ] Run `npm run build:chrome` to rebuild with valid icons
+- [ ] Ensure icon files in `icons/` directory are not empty
+- [ ] Check that `dist/icons/` contains valid PNG files
+
+### "watches.forEach is not a function" or data format errors
+- [ ] Check browser console (right-click extension icon → Inspect) for logged data structure
+- [ ] The extension now handles different API response formats automatically
+- [ ] If issue persists, your ChangeDetection.io version might return data in an unexpected format
+
+## ✅ Common Setup Issues
+
+### ChangeDetection.io API Setup
+1. **Enable API in ChangeDetection.io**:
+   - Open your ChangeDetection.io web interface
+   - Go to **Settings** → **API** 
+   - Check "**Enable API**" checkbox
+   - Copy your API key
+
+2. **Test API manually** (optional debugging):
+   ```bash
+   # Replace with your server URL and API key
+   curl -X GET "http://localhost:5000/api/v1/watch" -H "x-api-key: YOUR_API_KEY_HERE"
+   ```
+   Should return JSON with your watches, not a 404 error.
+
+3. **Server URL Format**:
+   - ✅ Correct: `http://localhost:5000` 
+   - ✅ Correct: `https://changedetection.mydomain.com`
+   - ❌ Wrong: `http://localhost:5000/api/v1/watch/`
+   - ❌ Wrong: Missing `http://` or `https://`
 
 ## ✅ Development Testing (Optional)
 
