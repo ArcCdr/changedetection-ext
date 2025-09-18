@@ -24,6 +24,16 @@ header {
   box-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
 
+.title-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.title-link:hover h1 {
+  text-decoration: underline;
+}
+
 header h1 {
   margin: 0;
   font-size: 18px;

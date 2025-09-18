@@ -40,7 +40,15 @@ class PopupManager {
     });
   }
 
-  showState(stateName) {
+  setTitleLink(baseURL) {
+    const titleLink = document.getElementById('titleLink');
+    if (titleLink && baseURL) {
+      titleLink.href = baseURL;
+      titleLink.target = '_blank'; // Open in new tab
+    }
+  }
+
+  showState(state) {
     // Hide all states
     this.loadingState.style.display = 'none';
     this.errorState.style.display = 'none';
@@ -48,7 +56,7 @@ class PopupManager {
     this.watchesList.style.display = 'none';
 
     // Show requested state
-    switch (stateName) {
+    switch (state) {
       case 'loading':
         this.loadingState.style.display = 'flex';
         break;
@@ -74,6 +82,9 @@ class PopupManager {
         this.showState('noConfig');
         return;
       }
+
+      // Set up the title link
+      this.setTitleLink(settings.baseURL);
 
       // Load watches from background script
       const response = await this.sendMessage({ action: 'getWatches' });
@@ -152,6 +163,22 @@ class PopupManager {
       `;
       return;
     }
+
+    // Sort watches by last_changed (most recent first)
+    // Watches that were never changed (last_changed = 0) go to the bottom
+    watchesArray.sort((a, b) => {
+      const aChanged = a.last_changed || 0;
+      const bChanged = b.last_changed || 0;
+      
+      // If both are 0 (never changed), maintain original order
+      if (aChanged === 0 && bChanged === 0) return 0;
+      // If only a is 0, put it at the bottom
+      if (aChanged === 0) return 1;
+      // If only b is 0, put it at the bottom
+      if (bChanged === 0) return -1;
+      // Both have been changed, sort by most recent first
+      return bChanged - aChanged;
+    });
 
     watchesArray.forEach(watch => {
       const watchElement = this.createWatchElement(watch);
