@@ -12,7 +12,7 @@ A browser extension that integrates with [changedetection.io](https://github.com
 - 🔗 **Quick Access**: Click any watch to open the monitored URL and mark it as read
 - ⚙️ **Easy Setup**: Simple configuration for server URL and API key
 - 🔄 **Auto Refresh**: Automatic background updates every 5 minutes
-- 🌐 **Cross-Browser**: Compatible with Chrome and Firefox (Manifest V3)
+- 🌐 **Chrome Extension**: Manifest V3 compatible with Chrome and Chromium browsers
 
 ## Installation
 
@@ -39,11 +39,6 @@ A browser extension that integrates with [changedetection.io](https://github.com
    - Enable "Developer mode"
    - Click "Load unpacked"
    - Select the `dist` directory (not the main project directory)
-
-5. **Load in Firefox** (Use Firefox manifest):
-   - See [FIREFOX.md](FIREFOX.md) for detailed instructions
-   - Quick: Use `manifest-firefox.json` in `about:debugging`
-   - Or run: `cp manifest-firefox.json manifest.json` then load normally
 
 ### Create Icon Files
 
@@ -145,12 +140,8 @@ npm run lint:fix
 # Build and validate
 npm run build
 
-# Development (Firefox)
-npm run dev:firefox
-
 # Package for distribution
-npm run package:firefox
-npm run package:chrome
+npm run package
 ```
 
 ### Testing
@@ -174,18 +165,6 @@ Test coverage includes:
 - ✅ Popup interface interactions
 - ✅ Settings validation and storage
 - ✅ Watch status calculations
-
-### Browser Compatibility
-
-| Feature | Chrome | Firefox |
-|---------|--------|---------|
-| Manifest V3 | ✅ | ⚠️ (Experimental) |
-| Service Worker | ✅ | ⚠️ (Limited) |
-| Storage API | ✅ | ✅ |
-| Badge API | ✅ | ✅ |
-| Tabs API | ✅ | ✅ |
-
-**Note**: Firefox's Manifest V3 support is still experimental. The extension works but requires manual loading via `about:debugging`.
 
 ## Troubleshooting
 
@@ -214,7 +193,6 @@ Test coverage includes:
 Enable developer tools to see detailed logs:
 
 1. **Chrome**: Right-click extension icon → "Inspect popup"
-2. **Firefox**: about:debugging → This Firefox → Inspect
 
 Check console logs for API responses and error details.
 
@@ -234,7 +212,7 @@ Check console logs for API responses and error details.
 - Follow ESLint rules (run `npm run lint`)
 - Write tests for new features
 - Update documentation as needed
-- Test in both Chrome and Firefox
+- Test extension functionality in Chrome
 - Keep the popup responsive and lightweight
 
 ## License

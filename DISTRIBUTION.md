@@ -1,6 +1,6 @@
 # ChangeDetection.io Browser Extension - v1.0.0
 
-A browser extension to monitor your ChangeDetection.io watches directly from your browser toolbar.
+A Chrome browser extension to monitor your ChangeDetection.io watches directly from your browser toolbar.
 
 ## 📦 Package Files
 
@@ -8,11 +8,6 @@ A browser extension to monitor your ChangeDetection.io watches directly from you
 - **`changedetection-extension-chrome-v1.0.0.zip`** (88KB)
   - Uses Manifest V3
   - Compatible with Chrome, Edge, Brave, Opera, and other Chromium-based browsers
-
-### For Firefox:
-- **`changedetection-extension-firefox-v1.0.0.zip`** (88KB) 
-  - Uses Manifest V2 (Firefox standard)
-  - Compatible with Firefox and Firefox-based browsers
 
 ## 🚀 Installation Options
 
@@ -31,21 +26,8 @@ A browser extension to monitor your ChangeDetection.io watches directly from you
 5. Click "Load unpacked" and select the extracted folder
 6. The extension will appear in your toolbar
 
-#### For Firefox:
-1. Download `changedetection-extension-firefox-v1.0.0.zip`
-2. Open Firefox and go to `about:debugging`
-3. Click "This Firefox" 
-4. Click "Load Temporary Add-on"
-5. Select the ZIP file directly (don't extract)
-6. The extension will appear in your toolbar
-
-### Option 3: Firefox Add-ons (AMO)
-1. Upload `changedetection-extension-firefox-v1.0.0.zip` to Firefox Add-ons
-2. Go through Mozilla's review process
-3. Users can install from AMO
-
-### Option 4: Enterprise/Private Distribution
-- Distribute the ZIP files directly to users
+### Option 3: Enterprise/Private Distribution
+- Distribute the ZIP file directly to users
 - Use enterprise policies to auto-install
 - Host on your own servers with update mechanisms
 
@@ -68,13 +50,12 @@ After installation:
 - **Quick actions**: Click to open watch URL and mark as read
 - **Bulk operations**: "Mark all as watched" button
 - **Auto-refresh**: Configurable refresh intervals
-- **Cross-browser**: Works on Chrome and Firefox
+- **Cross-browser**: Works on Chrome
 - **Secure**: All data stays between your browser and your server
 
 ## 🔧 Technical Details
 
 - **Chrome version**: Manifest V3, Service Worker background script
-- **Firefox version**: Manifest V2, Background script
 - **Permissions**: Storage, Tabs, Alarms, HTTP/HTTPS access
 - **API Integration**: RESTful API calls with x-api-key authentication
 - **Storage**: Uses browser sync storage for settings
@@ -83,8 +64,7 @@ After installation:
 
 - **Version**: 1.0.0
 - **Build Date**: September 18, 2025
-- **Compatibility**: Chrome 88+, Firefox 78+
-- **Package Size**: ~88KB each
+- **Compatibility**: Chrome 88+- **Package Size**: ~88KB each
 
 ## 🛠️ For Developers
 
@@ -102,7 +82,6 @@ npm run package
 
 # Development mode
 npm run dev:chrome  # For Chrome
-npm run dev:firefox # For Firefox
 ```
 
 ## 📄 License

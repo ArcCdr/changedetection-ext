@@ -13,13 +13,6 @@
    - Click "Load unpacked"
    - Select this directory
 
-3. **Load extension in Firefox** (Manual):
-   - Open `about:debugging` in Firefox
-   - Click "This Firefox"
-   - Click "Load Temporary Add-on..."
-   - Select `manifest.json` from this directory
-   - Note: Firefox MV3 support is experimental
-
 ## Development Workflow
 
 ### Testing
@@ -60,7 +53,7 @@
 
 - **Auto-refresh**: Background updates every 5 minutes
 - **Badge management**: Red dot indicator for unread watches
-- **Cross-browser**: Manifest V3 compatible with Chrome and Firefox
+- **Cross-browser**: Manifest V3 compatible with Chrome
 - **Offline handling**: Graceful error states when server unreachable
 - **Security**: All API requests include proper headers and validation
 
@@ -83,5 +76,4 @@
 
 ### Debugging
 - **Chrome**: Right-click extension icon → "Inspect popup"
-- **Firefox**: about:debugging → This Firefox → Inspect
 - Check console logs for API responses and errors

@@ -111,7 +111,7 @@ class PopupManager {
     this.watchesContainer.innerHTML = '';
 
     // Debug: log the data type and structure
-    console.log('Received watches data:', watches, 'Type:', typeof watches, 'Is Array:', Array.isArray(watches));
+        // Display watches data
 
     // Handle different data formats
     if (!watches) {

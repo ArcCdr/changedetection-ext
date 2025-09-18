@@ -18,18 +18,6 @@
 
 **Note**: If you get "Could not load icon" errors, ensure the icon files in the `icons/` directory are valid PNG files, not empty files.
 
-### Firefox (Manual Installation Recommended)
-**Note**: Firefox's Manifest V3 support is still experimental. For best results, use the Firefox-specific manifest:
-
-- [ ] Open Firefox and go to `about:debugging`
-- [ ] Click "This Firefox" on the left sidebar
-- [ ] Click "Load Temporary Add-on..."
-- [ ] Navigate to the `changedetection-ext` directory
-- [ ] **Select the `manifest-firefox.json` file** (not manifest.json)
-- [ ] Extension loads temporarily (until Firefox restart)
-
-**If using manifest-firefox.json fails**: Try the regular `manifest.json` file instead.
-
 ## ✅ Extension Configuration
 
 - [ ] Click the extension icon in toolbar
@@ -114,7 +102,7 @@
 
 - [ ] Run `npm test` - all tests pass
 - [ ] Run `npm run lint` - no lint errors
-- [ ] Load extension in both Chrome and Firefox
+- [ ] Load extension in both Chrome
 - [ ] Test with various watch states (read/unread/empty)
 - [ ] Test error scenarios (server down, wrong API key)
 
