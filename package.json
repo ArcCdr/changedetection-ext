@@ -11,7 +11,7 @@
     "build": "npm run lint && npm test && npm run build:chrome",
     "build:chrome": "mkdir -p dist && cp manifest.json background.js popup.html popup.js popup.css options.html options.js options.css content.js dist/ && cp -r icons dist/",
     "package": "npm run package:chrome",
-    "package:chrome": "npm run build:chrome && cd dist && zip -r ../changedetection-extension-chrome-v1.0.0.zip . -x '*.DS_Store' '*.git*'",
+    "package:chrome": "npm run build:chrome && cd dist && zip -r changedetection-extension-chrome-v1.0.0.zip . -x '*.DS_Store' '*.git*'",
     "dev:chrome": "echo 'Chrome: Load dist/ directory -> chrome://extensions/ -> Enable Developer mode -> Load unpacked -> select dist/ directory'",
     "chrome-setup": "git checkout manifest.json 2>/dev/null || echo 'Using default Chrome manifest'"
   },
