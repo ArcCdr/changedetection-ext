@@ -208,38 +208,29 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   return true; // Keep message channel open for async response
 });
 
-// Set up periodic badge updates with configurable intervals
+// Set up periodic badge updates with configurable interval
 async function setupBadgeUpdates() {
-  // Get refresh intervals from settings
+  // Get refresh interval from settings
   const settings = await new Promise((resolve) => {
-    chrome.storage.sync.get(['refreshIntervalInitial', 'refreshIntervalRegular'], (result) => {
+    chrome.storage.sync.get(['refreshInterval'], (result) => {
       resolve(result);
     });
   });
   
-  const initialInterval = settings.refreshIntervalInitial || 2;
-  const regularInterval = settings.refreshIntervalRegular || 5;
-  
-  console.log('Setting up badge updates - Initial:', initialInterval, 'min, Regular:', regularInterval, 'min');
+  let interval = settings.refreshInterval;
+  interval = interval || 5;
+  console.log('Setting up badge updates - Interval:', interval, 'min');
   
   // Clear existing alarms
   chrome.alarms.clear('updateBadge');
-  chrome.alarms.clear('updateBadgeFrequent');
   
-  // Check frequently for the first hour, then switch to regular interval
-  chrome.alarms.create('updateBadgeFrequent', { periodInMinutes: initialInterval });
-  setTimeout(() => {
-    chrome.alarms.clear('updateBadgeFrequent');
-    chrome.alarms.create('updateBadge', { periodInMinutes: regularInterval });
-    console.log('Switched to regular refresh interval:', regularInterval, 'minutes');
-  }, 60 * 60 * 1000); // Switch after 1 hour
+  // Set up the update alarm
+  chrome.alarms.create('updateBadge', { periodInMinutes: interval });
 }
 
 // Update badge periodically
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'updateBadge') {
-    updateBadge();
-  } else if (alarm.name === 'updateBadgeFrequent') {
     updateBadge();
   }
 });
@@ -263,9 +254,9 @@ chrome.storage.onChanged.addListener(async (changes, namespace) => {
       updateBadge();
     }
     
-    // If refresh intervals changed, restart the alarm system
-    if (changes.refreshIntervalInitial || changes.refreshIntervalRegular) {
-      console.log('Refresh intervals changed, restarting badge updates');
+    // If refresh interval changed, restart the alarm system
+    if (changes.refreshInterval) {
+      console.log('Refresh interval changed, restarting badge updates');
       await setupBadgeUpdates();
     }
   }

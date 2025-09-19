@@ -39,29 +39,16 @@
         </div>
         
         <div class="form-group">
-          <label for="refreshIntervalInitial">Initial Refresh Interval (minutes)</label>
+          <label for="refreshInterval">Refresh Interval (minutes)</label>
           <input 
             type="number" 
-            id="refreshIntervalInitial" 
-            name="refreshIntervalInitial" 
-            min="1" 
-            max="60"
-            value="2"
-          >
-          <small>How often to check for updates during the first hour (1-60 minutes)</small>
-        </div>
-        
-        <div class="form-group">
-          <label for="refreshIntervalRegular">Regular Refresh Interval (minutes)</label>
-          <input 
-            type="number" 
-            id="refreshIntervalRegular" 
-            name="refreshIntervalRegular" 
+            id="refreshInterval" 
+            name="refreshInterval" 
             min="1" 
             max="1440"
             value="5"
           >
-          <small>How often to check for updates after the first hour (1-1440 minutes)</small>
+          <small>How often to check for updates (1-1440 minutes)</small>
         </div>
         
         <div class="form-actions">

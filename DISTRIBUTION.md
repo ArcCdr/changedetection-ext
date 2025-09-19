@@ -40,8 +40,7 @@ After installation:
    - **Server URL**: Your ChangeDetection.io server (e.g., `https://your-server.com`)
    - **API Key**: Your API key from ChangeDetection.io
 4. Set refresh intervals (optional):
-   - **Initial refresh**: How often to check in the first hour (default: 2 minutes)
-   - **Regular refresh**: How often to check after the first hour (default: 5 minutes)
+   - **Refresh**: How often to check (default: 5 minutes)
 
 ## ✨ Features
 

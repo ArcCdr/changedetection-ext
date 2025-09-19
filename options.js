@@ -5,8 +5,7 @@ class OptionsManager {
     this.form = document.getElementById('settingsForm');
     this.baseURLInput = document.getElementById('baseURL');
     this.apiKeyInput = document.getElementById('apiKey');
-    this.refreshIntervalInitialInput = document.getElementById('refreshIntervalInitial');
-    this.refreshIntervalRegularInput = document.getElementById('refreshIntervalRegular');
+    this.refreshIntervalInput = document.getElementById('refreshInterval');
     this.testBtn = document.getElementById('testBtn');
     this.testResult = document.getElementById('testResult');
     this.testMessage = document.getElementById('testMessage');
@@ -30,17 +29,16 @@ class OptionsManager {
     // Auto-hide messages after a delay
     this.baseURLInput.addEventListener('input', () => this.hideMessages());
     this.apiKeyInput.addEventListener('input', () => this.hideMessages());
-    this.refreshIntervalInitialInput.addEventListener('input', () => this.hideMessages());
-    this.refreshIntervalRegularInput.addEventListener('input', () => this.hideMessages());
+    this.refreshIntervalInput.addEventListener('input', () => this.hideMessages());
   }
 
   async loadSettings() {
     try {
       const settings = await this.getStoredSettings();
+      
       this.baseURLInput.value = settings.baseURL || '';
       this.apiKeyInput.value = settings.apiKey || '';
-      this.refreshIntervalInitialInput.value = settings.refreshIntervalInitial || 2;
-      this.refreshIntervalRegularInput.value = settings.refreshIntervalRegular || 5;
+      this.refreshIntervalInput.value = settings.refreshInterval || 5;
     } catch (error) {
       console.error('Error loading settings:', error);
     }
@@ -51,8 +49,7 @@ class OptionsManager {
       chrome.storage.sync.get([
         'baseURL', 
         'apiKey', 
-        'refreshIntervalInitial', 
-        'refreshIntervalRegular'
+        'refreshInterval',
       ], (result) => {
         resolve(result);
       });
@@ -62,8 +59,7 @@ class OptionsManager {
   async saveSettings() {
     const baseURL = this.baseURLInput.value.trim();
     const apiKey = this.apiKeyInput.value.trim();
-    const refreshIntervalInitial = parseInt(this.refreshIntervalInitialInput.value) || 2;
-    const refreshIntervalRegular = parseInt(this.refreshIntervalRegularInput.value) || 5;
+    const refreshInterval = parseInt(this.refreshIntervalInput.value) || 5;
 
     if (!baseURL || !apiKey) {
       this.showSaveResult('error', 'Please fill in all required fields.');
@@ -78,14 +74,9 @@ class OptionsManager {
       return;
     }
 
-    // Validate refresh intervals
-    if (refreshIntervalInitial < 1 || refreshIntervalInitial > 60) {
-      this.showSaveResult('error', 'Initial refresh interval must be between 1 and 60 minutes.');
-      return;
-    }
-
-    if (refreshIntervalRegular < 1 || refreshIntervalRegular > 1440) {
-      this.showSaveResult('error', 'Regular refresh interval must be between 1 and 1440 minutes.');
+    // Validate refresh interval
+    if (refreshInterval < 1 || refreshInterval > 1440) {
+      this.showSaveResult('error', 'Refresh interval must be between 1 and 1440 minutes.');
       return;
     }
 
@@ -95,8 +86,7 @@ class OptionsManager {
         chrome.storage.sync.set({ 
           baseURL, 
           apiKey, 
-          refreshIntervalInitial, 
-          refreshIntervalRegular 
+          refreshInterval 
         }, resolve);
       });
 
