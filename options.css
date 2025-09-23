@@ -26,6 +26,12 @@ header h1 {
   font-weight: 600;
 }
 
+.version-info {
+  margin-top: 10px;
+  opacity: 0.8;
+  font-size: 14px;
+}
+
 main {
   padding: 40px;
 }

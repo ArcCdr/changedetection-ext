@@ -214,8 +214,24 @@ class PopupManager {
   }
 
   isWatchUnread(watch) {
-    // Use the "viewed" boolean field from ChangeDetection.io API
-    return watch.viewed === false;
+    // Check both "viewed" boolean field and compare last_viewed vs last_changed timestamps
+    // This provides more robust unread detection to match background script logic
+    
+    // Primary check: use "viewed" boolean field if available
+    if (typeof watch.viewed === 'boolean') {
+      return watch.viewed === false;
+    }
+    
+    // Fallback: compare timestamps - if last_viewed is less than last_changed, it's unread
+    // Handle cases where last_changed might be 0 (never changed) or missing
+    const lastChanged = watch.last_changed || 0;
+    const lastViewed = watch.last_viewed || 0;
+    
+    // If never changed, consider it read
+    if (lastChanged === 0) return false;
+    
+    // If last_viewed is 0 or less than last_changed, it's unread
+    return lastViewed === 0 || lastViewed < lastChanged;
   }
 
   async handleWatchClick(event, watch) {

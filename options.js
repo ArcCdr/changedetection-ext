@@ -11,9 +11,11 @@ class OptionsManager {
     this.testMessage = document.getElementById('testMessage');
     this.saveResult = document.getElementById('saveResult');
     this.saveMessage = document.getElementById('saveMessage');
+    this.versionNumber = document.getElementById('versionNumber');
 
     this.initializeEventListeners();
     this.loadSettings();
+    this.loadVersion();
   }
 
   initializeEventListeners() {
@@ -41,6 +43,17 @@ class OptionsManager {
       this.refreshIntervalInput.value = settings.refreshInterval || 5;
     } catch (error) {
       console.error('Error loading settings:', error);
+    }
+  }
+
+  loadVersion() {
+    try {
+      const manifest = chrome.runtime.getManifest();
+      const version = manifest.version;
+      this.versionNumber.textContent = `Version: ${version}`;
+    } catch (error) {
+      console.error('Error loading version:', error);
+      this.versionNumber.textContent = 'Version: Unknown';
     }
   }
 

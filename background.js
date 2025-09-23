@@ -102,6 +102,7 @@ const api = new ChangeDetectionAPI();
 // Update badge based on unread watches
 async function updateBadge() {
   try {
+    console.log('Updating badge...');
     const response = await api.getWatches();
     
     // Handle different response formats
@@ -121,16 +122,18 @@ async function updateBadge() {
     }
     
     const unreadCount = countUnreadWatches(watches);
+    console.log(`Found ${watches.length} watches, ${unreadCount} unread`);
     
     if (unreadCount > 0) {
-      browserAction.setBadgeText({ text: '●' });
-      browserAction.setBadgeBackgroundColor({ color: '#ff0000' });
+      await browserAction.setBadgeText({ text: '●' });
+      await browserAction.setBadgeBackgroundColor({ color: '#ff0000' });
     } else {
-      browserAction.setBadgeText({ text: '' });
+      await browserAction.setBadgeText({ text: '' });
     }
   } catch (error) {
     console.error('Failed to update badge:', error);
-    browserAction.setBadgeText({ text: '' });
+    // Don't clear badge on error - keep previous state
+    // Only clear if we explicitly know there are no unread items
   }
 }
 
@@ -138,8 +141,24 @@ function countUnreadWatches(watches) {
   if (!watches || !Array.isArray(watches)) return 0;
   
   return watches.filter(watch => {
-    // Use the "viewed" boolean field from ChangeDetection.io API
-    return watch.viewed === false;
+    // Check both "viewed" boolean field and compare last_viewed vs last_changed timestamps
+    // This provides more robust unread detection
+    
+    // Primary check: use "viewed" boolean field if available
+    if (typeof watch.viewed === 'boolean') {
+      return watch.viewed === false;
+    }
+    
+    // Fallback: compare timestamps - if last_viewed is less than last_changed, it's unread
+    // Handle cases where last_changed might be 0 (never changed) or missing
+    const lastChanged = watch.last_changed || 0;
+    const lastViewed = watch.last_viewed || 0;
+    
+    // If never changed, consider it read
+    if (lastChanged === 0) return false;
+    
+    // If last_viewed is 0 or less than last_changed, it's unread
+    return lastViewed === 0 || lastViewed < lastChanged;
   }).length;
 }
 
@@ -221,30 +240,83 @@ async function setupBadgeUpdates() {
   interval = interval || 5;
   console.log('Setting up badge updates - Interval:', interval, 'min');
   
-  // Clear existing alarms
-  chrome.alarms.clear('updateBadge');
+  // Clear existing alarms to avoid duplicates
+  await chrome.alarms.clear('updateBadge');
   
-  // Set up the update alarm
-  chrome.alarms.create('updateBadge', { periodInMinutes: interval });
+  // Set up the update alarm with when parameter to ensure immediate scheduling
+  chrome.alarms.create('updateBadge', { 
+    periodInMinutes: interval,
+    when: Date.now() + (interval * 60 * 1000) // First alarm after interval
+  });
+  
+  // Verify alarm was created
+  const alarms = await chrome.alarms.getAll();
+  const updateAlarm = alarms.find(alarm => alarm.name === 'updateBadge');
+  if (updateAlarm) {
+    console.log('Badge update alarm created successfully:', updateAlarm);
+  } else {
+    console.error('Failed to create badge update alarm');
+  }
 }
 
-// Update badge periodically
-chrome.alarms.onAlarm.addListener((alarm) => {
+// Update badge periodically and handle alarm watchdog
+chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === 'updateBadge') {
-    updateBadge();
+    console.log('Badge update alarm triggered');
+    await updateBadge();
+    
+    // Verify the alarm is still scheduled for next time
+    // Chrome can sometimes clear alarms during extended idle periods
+    const alarms = await chrome.alarms.getAll();
+    const updateAlarm = alarms.find(a => a.name === 'updateBadge');
+    if (!updateAlarm) {
+      console.log('Badge alarm was cleared, recreating...');
+      await setupBadgeUpdates();
+    }
+  } else if (alarm.name === 'alarmWatchdog') {
+    console.log('Alarm watchdog triggered');
+    const alarms = await chrome.alarms.getAll();
+    const updateAlarm = alarms.find(a => a.name === 'updateBadge');
+    if (!updateAlarm) {
+      console.log('Watchdog detected missing badge alarm, recreating...');
+      await setupBadgeUpdates();
+      await updateBadge(); // Immediate update
+    }
   }
 });
 
+// Additional safeguard: Check for missing alarms periodically
+chrome.alarms.create('alarmWatchdog', { periodInMinutes: 60 }); // Check every hour
+
 // Set up periodic badge updates
 chrome.runtime.onStartup.addListener(async () => {
+  console.log('Extension startup - initializing badge updates');
   await setupBadgeUpdates();
-  updateBadge(); // Update immediately on startup
+  await updateBadge(); // Update immediately on startup
 });
 
 chrome.runtime.onInstalled.addListener(async () => {
+  console.log('Extension installed/updated - initializing badge updates');
   await setupBadgeUpdates();
-  updateBadge(); // Update immediately on install
+  await updateBadge(); // Update immediately on install
 });
+
+// Handle when extension wakes up from idle state
+if (chrome.idle && chrome.idle.onStateChanged) {
+  chrome.idle.onStateChanged.addListener(async (newState) => {
+    if (newState === 'active') {
+      console.log('System became active - checking badge status');
+      // Ensure alarm is still active and update badge
+      const alarms = await chrome.alarms.getAll();
+      const updateAlarm = alarms.find(a => a.name === 'updateBadge');
+      if (!updateAlarm) {
+        console.log('Alarm missing after idle, recreating...');
+        await setupBadgeUpdates();
+      }
+      await updateBadge();
+    }
+  });
+}
 
 // Update badge when settings change
 chrome.storage.onChanged.addListener(async (changes, namespace) => {
