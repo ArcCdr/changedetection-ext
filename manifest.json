@@ -1,20 +1,17 @@
 {
   "manifest_version": 3,
   "name": "ChangeDetection.io Monitor",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Monitor your changedetection.io watches directly from your browser",
   
   "permissions": [
     "storage",
-    "activeTab",
-    "tabs",
     "alarms",
     "idle"
   ],
   
-  "host_permissions": [
-    "http://*/*",
-    "https://*/*"
+  "optional_permissions": [
+    "tabs"
   ],
   
   "background": {
@@ -36,14 +33,6 @@
   
   "options_page": "options.html",
   
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"],
-      "run_at": "document_idle"
-    }
-  ],
-  
   "icons": {
     "16": "icons/icon16.png",
     "24": "icons/icon24.png", 
@@ -51,12 +40,5 @@
     "48": "icons/icon48.png",
     "64": "icons/icon64.png",
     "128": "icons/icon128.png"
-  },
-  
-  "web_accessible_resources": [
-    {
-      "resources": ["icons/*"],
-      "matches": ["<all_urls>"]
-    }
-  ]
+  }
 }

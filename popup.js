@@ -243,7 +243,21 @@ class PopupManager {
 
     // Open the watch URL in a new tab
     if (watch.url) {
-      chrome.tabs.create({ url: watch.url });
+      // Check if we have tabs permission
+      const hasPermission = await chrome.permissions.contains({ permissions: ['tabs'] });
+      
+      if (hasPermission) {
+        chrome.tabs.create({ url: watch.url });
+      } else {
+        // Request permission and then open tab
+        const granted = await chrome.permissions.request({ permissions: ['tabs'] });
+        if (granted) {
+          chrome.tabs.create({ url: watch.url });
+        } else {
+          // Fallback to window.open (less reliable but works)
+          window.open(watch.url, '_blank');
+        }
+      }
     }
 
     watchItem.classList.add('loading');
