@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ChangeDetection.io Monitor",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Monitor your changedetection.io watches directly from your browser",
   "minimum_chrome_version": "120",
   "permissions": ["storage", "alarms", "idle", "activeTab"],

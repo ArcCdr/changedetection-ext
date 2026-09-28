@@ -1,6 +1,6 @@
 {
   "name": "changedetection-browser-extension",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "description": "Chrome extension to monitor changedetection.io watches",
   "scripts": {
