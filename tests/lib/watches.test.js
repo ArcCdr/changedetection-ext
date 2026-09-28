@@ -1,6 +1,8 @@
 import {
   countUnread,
   displayTitle,
+  filterWatches,
+  findWatchByUrl,
   isUnread,
   normalizeWatchList,
   primaryUrl,
@@ -115,5 +117,39 @@ describe('sortWatches', () => {
       'unread-new', 'unread-old', 'read-new', 'read-old', 'never-a', 'never-b',
     ]);
     expect(input).toEqual(copy);
+  });
+});
+
+describe('filterWatches', () => {
+  const watches = [
+    watch({ uuid: '1', title: 'Grafana Release', url: 'https://github.com/grafana' }),
+    watch({ uuid: '2', title: 'Prices', url: 'https://shop.example/item' }),
+  ];
+
+  test('blank query returns the same array', () => {
+    expect(filterWatches(watches, '   ')).toBe(watches);
+  });
+
+  test('matches title or url, case-insensitive, trimmed', () => {
+    expect(filterWatches(watches, ' grafana ').map((w) => w.uuid)).toEqual(['1']);
+    expect(filterWatches(watches, 'SHOP.EXAMPLE').map((w) => w.uuid)).toEqual(['2']);
+    expect(filterWatches(watches, 'nothing')).toEqual([]);
+  });
+});
+
+describe('findWatchByUrl', () => {
+  const watches = [watch({ uuid: '1', url: 'https://example.com/page' }), watch({ uuid: '2', url: 'not a url' })];
+
+  test('ignores fragment and one trailing slash', () => {
+    expect(findWatchByUrl(watches, 'https://example.com/page/#top').uuid).toBe('1');
+    expect(findWatchByUrl(watches, 'https://example.com/page').uuid).toBe('1');
+  });
+
+  test('compares unparsable values as plain strings', () => {
+    expect(findWatchByUrl(watches, 'not a url').uuid).toBe('2');
+  });
+
+  test('returns undefined when nothing matches', () => {
+    expect(findWatchByUrl(watches, 'https://example.com/other')).toBeUndefined();
   });
 });
