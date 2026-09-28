@@ -9,10 +9,12 @@ import { formatRelativeTime } from '../lib/format.js';
 import { createLogger } from '../lib/log.js';
 import { ACTIONS, sendMessage } from '../lib/messages.js';
 import { isConfigured, loadSettings, requestHostPermission } from '../lib/settings.js';
-import { isUnread, primaryUrl, sortWatches } from '../lib/watches.js';
+import { filterWatches, isUnread, primaryUrl, sortWatches } from '../lib/watches.js';
 import { buildWatchItem } from './watch-item.js';
 
 const log = createLogger('popup');
+
+export const FILTER_MIN_WATCHES = 10;
 
 const ELEMENT_IDS = [
   'titleLink', 'refreshBtn', 'settingsBtn', 'statusLine', 'loadingState', 'errorState', 'errorMessage',
@@ -50,6 +52,7 @@ export class PopupManager {
     this.el.markAllBtn.addEventListener('click', () => this.markAllViewed());
     this.el.grantBtn.addEventListener('click', () => this.grantAccess());
     this.el.recheckAllBtn.addEventListener('click', () => this.recheckAll());
+    this.el.filterInput.addEventListener('input', () => this.render());
   }
 
   /**
@@ -132,14 +135,18 @@ export class PopupManager {
     this.showError(response.error, response.errorKind);
   }
 
-  /** Rebuild the list from this.watches in display order. */
+  /** Rebuild the list from this.watches, applying the filter and sort order. */
   render() {
-    const visible = sortWatches(this.watches);
+    const showFilter = this.watches.length >= FILTER_MIN_WATCHES;
+    this.el.filterBar.hidden = !showFilter;
+    if (!showFilter) this.el.filterInput.value = '';
+    const visible = sortWatches(filterWatches(this.watches, this.el.filterInput.value));
     this.el.watchesContainer.replaceChildren(
       ...visible.map((watch) => buildWatchItem(this.doc, watch, this.settings.baseURL)),
     );
     this.el.emptyMessage.hidden = visible.length > 0;
-    this.el.emptyMessage.textContent = 'No watches yet.';
+    this.el.emptyMessage.textContent =
+      this.watches.length === 0 ? 'No watches yet.' : 'No watches match the filter.';
     this.el.markAllBtn.disabled = !this.watches.some(isUnread);
   }
 
