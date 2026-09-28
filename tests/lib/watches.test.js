@@ -100,8 +100,12 @@ describe('diffUrl', () => {
 });
 
 describe('primaryUrl', () => {
-  test('changed watch opens the server diff page', () => {
-    expect(primaryUrl(BASE, watch({ uuid: 'ab/c', last_changed: 10 }))).toBe(`${BASE}/diff/ab%2Fc`);
+  test('changed watch opens the monitored page', () => {
+    expect(primaryUrl(BASE, watch({ uuid: 'ab/c', last_changed: 10 }))).toBe('https://example.com/page');
+  });
+
+  test('changed watch without an http(s) page opens the server diff page', () => {
+    expect(primaryUrl(BASE, watch({ uuid: 'ab/c', url: 'file:///x', last_changed: 10 }))).toBe(`${BASE}/diff/ab%2Fc`);
   });
 
   test('never-changed watch opens the monitored page', () => {

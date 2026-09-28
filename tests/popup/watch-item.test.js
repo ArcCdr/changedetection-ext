@@ -19,7 +19,7 @@ describe('watchMeta', () => {
 });
 
 describe('buildWatchItem', () => {
-  test('unread changed watch has a Diff link to its diff page', () => {
+  test('unread changed watch opens the monitored page and has a Diff link to its diff page', () => {
     const item = buildWatchItem(document, {
       uuid: 'u1', title: 'Prices', url: 'https://shop.example/item', last_changed: TWO_HOURS_AGO, viewed: false,
     }, BASE);
@@ -27,7 +27,7 @@ describe('buildWatchItem', () => {
     expect(item.className).toBe('watch-item unread');
     expect(item.dataset.uuid).toBe('u1');
     const main = item.querySelector('a.watch-main');
-    expect(main.getAttribute('href')).toBe(`${BASE}/diff/u1`);
+    expect(main.getAttribute('href')).toBe('https://shop.example/item');
     expect(main.querySelector('.watch-title').textContent).toBe('Prices');
     expect(main.querySelector('.watch-meta').textContent).toMatch(/^Unread · Changed /);
     const diff = item.querySelector('a.watch-diff');

@@ -159,14 +159,14 @@ describe('opening watches', () => {
     return popup;
   }
 
-  test('click opens the diff page in the foreground and marks the row read', async () => {
+  test('click opens the monitored page in the foreground and marks the row read', async () => {
     const popup = await ready();
     const main = document.querySelector('[data-uuid="u"] .watch-main');
     const event = new MouseEvent('click', { bubbles: true, cancelable: true });
     main.dispatchEvent(event);
     expect(event.defaultPrevented).toBe(true);
     expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
-      action: 'openWatch', uuid: 'u', url: `${BASE}/diff/u`, lastChanged: 100, background: false,
+      action: 'openWatch', uuid: 'u', url: 'https://u.example/', lastChanged: 100, background: false,
     });
     expect(document.querySelector('[data-uuid="u"]').classList.contains('unread')).toBe(false);
     expect(popup.watches.find((w) => w.uuid === 'u').viewed).toBe(true);
