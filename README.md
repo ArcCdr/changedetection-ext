@@ -1,238 +1,70 @@
-# ChangeDetection.io Browser Extension
+# ChangeDetection.io Monitor
 
-A browser extension that integrates with [changedetection.io](https://github.com/dgtlmoon/changedetection.io) to monitor your watches directly from your browser toolbar.
-
-![Extension Demo](https://via.placeholder.com/600x300/667eea/ffffff?text=ChangeDetection.io+Browser+Extension)
+A Chrome extension that connects to your self-hosted [changedetection.io](https://github.com/dgtlmoon/changedetection.io)
+server, shows unread changes on the toolbar badge, and lets you review and manage your watches
+without opening the server's web UI.
 
 ## Features
 
-- 🔍 **Watch Monitoring**: View all your changedetection.io watches in a clean popup interface
-- 🔴 **Visual Indicators**: Red badge icon when unread watches are detected
-- 📖 **Read Status**: Bold text for unread watches, regular text for read watches
-- 🔗 **Quick Access**: Click any watch to open the monitored URL and mark it as read
-- ⚙️ **Easy Setup**: Simple configuration for server URL and API key
-- 🔄 **Auto Refresh**: Automatic background updates every 5 minutes
-- 🌐 **Chrome Extension**: Manifest V3 compatible with Chrome and Chromium browsers
+- Toolbar badge shows the unread count (capped at `99+`) and turns into a grey `!` with the
+  error in its tooltip when the server can't be reached.
+- Click a watch to open its diff page and mark it viewed; the `↗` link opens the monitored page
+  itself.
+- Ctrl/Cmd-click or middle-click a watch to open it in a background tab and keep the popup open.
+- **Mark all viewed** and **Recheck all** buttons for bulk actions.
+- A filter box appears once you have 10 or more watches.
+- **Watch this page** adds the active browser tab as a new watch.
+- Watches with a server-side error show a warning marker with the error as a tooltip.
+- Dark mode follows your OS theme; every control is keyboard accessible.
+- `Alt+Shift+D` opens the popup without touching the mouse.
+- Optional desktop notifications when a watch changes.
 
-## Installation
+## Requirements
 
-### From Source (Development)
+- Chrome 120 or later (or another Chromium-based browser)
+- A changedetection.io server, version 0.50.12 or newer, with the API enabled and an API key
 
-1. **Clone the repository**:
-   ```bash
-   git clone <repository-url>
-   cd changedetection-ext
-   ```
+## Install
 
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
+- **Load unpacked**: download or clone this repository, open `chrome://extensions`, enable
+  *Developer mode*, click *Load unpacked* and select the `src/` folder.
+- **Or build the zip**: `npm run package` creates
+  `dist/changedetection-extension-chrome-v<version>.zip`; extract it and load it unpacked, or
+  upload it to the Chrome Web Store.
 
-3. **Build the extension**:
-   ```bash
-   npm run build:chrome
-   ```
+## Setup
 
-4. **Load in Chrome**:
-   - Open `chrome://extensions/`
-   - Enable "Developer mode"
-   - Click "Load unpacked"
-   - Select the `dist` directory (not the main project directory)
-
-### Create Icon Files
-
-The extension requires icon files in the `icons/` directory. Create these PNG files:
-- `icon16.png` (16x16 pixels)
-- `icon32.png` (32x32 pixels)
-- `icon48.png` (48x48 pixels)
-- `icon128.png` (128x128 pixels)
-
-You can use any image editor or generate simple icons online.
-
-## Configuration
-
-1. **Click the extension icon** in your browser toolbar
-2. **Click "Configure"** or the settings gear icon
-3. **Enter your server details**:
-   - **Server URL**: Your changedetection.io server (e.g., `http://localhost:5000`)
-   - **API Key**: Your API key from changedetection.io settings
-4. **Click "Test Connection"** to verify the setup
-5. **Click "Save Settings"** to store your configuration
-
-### Getting Your API Key
-
-1. Open your changedetection.io web interface
-2. Go to **Settings**
-3. Find the **API** section
-4. Enable the API if not already enabled
-5. Copy your API key
-
-## Usage
-
-### Viewing Watches
-
-- Click the extension icon to open the popup
-- See all your watches with their current status
-- **Bold text** = unread (last_viewed < last_changed)
-- **Regular text** = read (last_viewed >= last_changed)
-- Red badge on icon = at least one unread watch
-
-### Opening Watches
-
-- Click any watch in the list
-- Opens the monitored URL in a new tab
-- Automatically marks the watch as read
-- Updates the badge status
-
-### Manual Refresh
-
-- Click the "🔄 Refresh" button in the popup
-- Background updates happen automatically every 5 minutes
-
-## API Integration
-
-The extension uses the changedetection.io REST API:
-
-- **GET** `/api/v1/watch/` - Fetch all watches
-- **PATCH** `/api/v1/watch/{uuid}` - Update watch (mark as read)
-
-All requests include the `x-api-key` header with your API key.
-
-### Read Status Logic
-
-A watch is considered **unread** when:
-- `last_changed` has a value AND
-- `last_viewed` is null OR `last_viewed <= last_changed`
-
-## Development
-
-### Project Structure
-
-```
-changedetection-ext/
-├── manifest.json          # Extension manifest (Manifest V3)
-├── background.js          # Service worker for API calls and badge
-├── popup.html            # Popup interface HTML
-├── popup.js              # Popup interface logic
-├── popup.css             # Popup interface styles
-├── options.html          # Settings page HTML
-├── options.js            # Settings page logic
-├── options.css           # Settings page styles
-├── content.js            # Content script (minimal)
-├── icons/                # Extension icons (16, 32, 48, 128px)
-├── __tests__/            # Jest unit tests
-├── package.json          # NPM dependencies and scripts
-└── README.md            # This file
-```
-
-### Available Scripts
-
-```bash
-# Run tests
-npm test
-npm run test:watch
-
-# Lint code
-npm run lint
-npm run lint:fix
-
-# Build and validate
-npm run build
-
-# Package for distribution
-npm run package
-```
-
-### Testing
-
-The project includes comprehensive unit tests using Jest:
-
-```bash
-# Run all tests
-npm test
-
-# Run tests in watch mode
-npm run test:watch
-
-# Run specific test file
-npm test background.test.js
-```
-
-Test coverage includes:
-- ✅ API functionality and error handling
-- ✅ Badge management logic
-- ✅ Popup interface interactions
-- ✅ Settings validation and storage
-- ✅ Watch status calculations
+1. Open the extension's options page (the gear icon in the popup, or right-click the toolbar
+   icon → *Options*).
+2. **Server URL**: the address you open changedetection.io at in your browser, e.g.
+   `http://192.168.1.10:5000`.
+3. **API key**: in changedetection.io, under *Settings → API*.
+4. Click **Test connection** to confirm the server answers before saving.
+5. Click **Save**. Chrome asks once for permission to access that server — accept it; servers on
+   your local network need this to be reachable at all.
 
 ## Troubleshooting
 
-### Common Issues
+- **API key rejected** — check the key was copied in full from *Settings → API*.
+- **API not found** — check the server URL and that your changedetection.io is 0.50.12 or newer.
+- **Access not granted** — click *Grant access* in the popup, or *Save* again in the options page
+  and accept the permission prompt.
+- **Cannot reach the server / did not respond** — the server is down, unreachable from this
+  network, or slow; the extension keeps showing the last watch list it fetched successfully.
+- **Grey `!` on the badge** — the last two refreshes failed in a row; hover the icon for the
+  error.
 
-**❌ "Please configure your server URL and API key first"**
-- Ensure you've entered both the server URL and API key in settings
-- Click "Test Connection" to verify the configuration
+## Privacy
 
-**❌ "Connection failed: API request failed: 401 Unauthorized"**
-- Check your API key is correct
-- Ensure the API is enabled in changedetection.io settings
+The extension only ever talks to the changedetection.io server you configure. Your server URL,
+API key, refresh interval and notification preference are stored in Chrome's synced storage
+(`chrome.storage.sync`), so they roam with your Chrome profile.
 
-**❌ "Connection failed: Failed to fetch"**
-- Verify your server URL is correct and accessible
-- Check if your server is running
-- Ensure there are no firewall/CORS issues
+## Development
 
-**❌ Extension icon shows no badge despite unread watches**
-- Check browser console for errors
-- Try refreshing manually with the "🔄 Refresh" button
-- Verify API permissions in extension settings
-
-### Debug Mode
-
-Enable developer tools to see detailed logs:
-
-1. **Chrome**: Right-click extension icon → "Inspect popup"
-
-Check console logs for API responses and error details.
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes
-4. Add tests for new functionality
-5. Run the test suite (`npm test`)
-6. Commit your changes (`git commit -am 'Add amazing feature'`)
-7. Push to the branch (`git push origin feature/amazing-feature`)
-8. Open a Pull Request
-
-### Development Guidelines
-
-- Follow ESLint rules (run `npm run lint`)
-- Write tests for new features
-- Update documentation as needed
-- Test extension functionality in Chrome
-- Keep the popup responsive and lightweight
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the code layout and contracts, and run
+`npm run check` before sending changes.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- [changedetection.io](https://github.com/dgtlmoon/changedetection.io) - The amazing change detection service
-- [web-ext](https://github.com/mozilla/web-ext) - Firefox extension development tool
-- [Jest](https://jestjs.io/) - Testing framework
-
-## Support
-
-If you encounter any issues or have feature requests:
-
-1. Check the [troubleshooting section](#troubleshooting)
-2. Search existing issues on GitHub
-3. Create a new issue with detailed information
-
----
-
-**Made with ❤️ for the changedetection.io community**
+MIT — see [LICENSE](LICENSE).
