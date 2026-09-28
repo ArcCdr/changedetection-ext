@@ -84,3 +84,61 @@ export function hostPermissionPattern(baseURL) {
   const url = new URL(baseURL);
   return `${url.protocol}//${url.hostname}/*`;
 }
+
+/**
+ * Saved extension settings with defaults applied.
+ *
+ * @typedef {object} Settings
+ * @property {string} baseURL - Normalized server URL, '' when unset.
+ * @property {string} apiKey - API key, '' when unset.
+ * @property {number} refreshInterval - Minutes between background refreshes.
+ * @property {boolean} notificationsEnabled - Whether desktop notifications are on.
+ */
+
+/**
+ * Load saved settings and apply defaults.
+ *
+ * @returns {Promise<Settings>} The settings; an invalid saved URL loads as ''.
+ */
+export async function loadSettings() {
+  const stored = await chrome.storage.sync.get(SETTINGS_KEYS);
+  return {
+    baseURL: normalizeBaseUrl(stored.baseURL) ?? '',
+    apiKey: typeof stored.apiKey === 'string' ? stored.apiKey.trim() : '',
+    refreshInterval: isValidRefreshInterval(stored.refreshInterval) ? stored.refreshInterval : DEFAULT_REFRESH_MINUTES,
+    notificationsEnabled: stored.notificationsEnabled === true,
+  };
+}
+
+/**
+ * Whether the extension can talk to a server.
+ *
+ * @param {Settings} settings - Loaded settings.
+ * @returns {boolean} True when both baseURL and apiKey are non-empty.
+ */
+export function isConfigured(settings) {
+  return Boolean(settings.baseURL && settings.apiKey);
+}
+
+/**
+ * Whether Chrome already granted access to the server origin.
+ *
+ * @param {string} baseURL - Normalized server URL.
+ * @returns {Promise<boolean>} Result of chrome.permissions.contains.
+ */
+export function hasHostPermission(baseURL) {
+  return chrome.permissions.contains({ origins: [hostPermissionPattern(baseURL)] });
+}
+
+/**
+ * Ask Chrome for access to the server origin.
+ *
+ * Call it synchronously from a click or submit handler, before any `await`, or Chrome
+ * rejects the request for lacking a user gesture.
+ *
+ * @param {string} baseURL - Normalized server URL.
+ * @returns {Promise<boolean>} True when access is granted.
+ */
+export function requestHostPermission(baseURL) {
+  return chrome.permissions.request({ origins: [hostPermissionPattern(baseURL)] });
+}
