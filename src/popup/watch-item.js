@@ -4,7 +4,7 @@
  * Uses DOM APIs only (no innerHTML), so watch titles and errors are never parsed as HTML.
  */
 import { formatRelativeTime } from '../lib/format.js';
-import { displayTitle, isUnread, primaryUrl, siteUrl } from '../lib/watches.js';
+import { diffUrl, displayTitle, isUnread, primaryUrl } from '../lib/watches.js';
 
 /**
  * Secondary text shown under a watch title.
@@ -26,7 +26,7 @@ export function watchMeta(watch, nowMs = Date.now()) {
  * @param {Document} doc - Document used to create elements.
  * @param {import('../lib/watches.js').Watch} watch - The watch.
  * @param {string} baseURL - Normalized server URL.
- * @returns {HTMLLIElement} `li.watch-item` holding `a.watch-main` and, when the watch has an http(s) page, `a.watch-site`.
+ * @returns {HTMLLIElement} `li.watch-item` holding `a.watch-main` and, when the watch has changed, the `a.watch-diff` Diff link.
  */
 export function buildWatchItem(doc, watch, baseURL) {
   const item = doc.createElement('li');
@@ -55,16 +55,15 @@ export function buildWatchItem(doc, watch, baseURL) {
   }
   item.append(main);
 
-  const site = siteUrl(watch);
-  if (site) {
+  if (Number(watch.last_changed) > 0) {
     const link = doc.createElement('a');
-    link.className = 'watch-site';
-    link.href = site;
+    link.className = 'watch-diff';
+    link.href = diffUrl(baseURL, watch.uuid);
     link.target = '_blank';
     link.rel = 'noopener';
-    link.title = 'Open monitored page';
-    link.setAttribute('aria-label', `Open monitored page: ${displayTitle(watch)}`);
-    link.textContent = '↗';
+    link.title = 'Open diff';
+    link.setAttribute('aria-label', `Open diff: ${displayTitle(watch)}`);
+    link.textContent = 'Diff';
     item.append(link);
   }
   return item;
