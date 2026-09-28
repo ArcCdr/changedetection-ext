@@ -2,6 +2,7 @@ import {
   NOTIFIED_KEY,
   SUMMARY_NOTIFICATION_ID,
   WATCH_NOTIFICATION_PREFIX,
+  notificationClickTarget,
   notificationTarget,
   notifyNewChanges,
 } from '../../src/lib/notify.js';
@@ -89,5 +90,35 @@ describe('notificationTarget', () => {
 
   test('summary id opens the server', () => {
     expect(notificationTarget(SUMMARY_NOTIFICATION_ID, 'http://h:5000')).toBe('http://h:5000');
+  });
+});
+
+describe('notificationClickTarget', () => {
+  const cached = [
+    { uuid: 'a/b', url: 'https://site.example/page', last_changed: 100, viewed: false },
+    { uuid: 'nosite', url: 'file:///tmp/x', last_changed: 50, viewed: false },
+  ];
+
+  test('single-watch id opens the cached watch\'s monitored page with its last_changed', () => {
+    expect(notificationClickTarget(`${WATCH_NOTIFICATION_PREFIX}a/b`, 'http://h:5000', cached)).toEqual({
+      uuid: 'a/b', url: 'https://site.example/page', lastChanged: 100,
+    });
+  });
+
+  test('single-watch id without an http(s) page opens its diff page', () => {
+    expect(notificationClickTarget(`${WATCH_NOTIFICATION_PREFIX}nosite`, 'http://h:5000', cached)).toEqual({
+      uuid: 'nosite', url: 'http://h:5000/diff/nosite', lastChanged: 50,
+    });
+  });
+
+  test('single-watch id missing from the cache opens the diff page without marking, and warns', () => {
+    expect(notificationClickTarget(`${WATCH_NOTIFICATION_PREFIX}gone`, 'http://h:5000', [])).toEqual({
+      uuid: 'gone', url: 'http://h:5000/diff/gone', lastChanged: 0,
+    });
+    expect(hasLog('warn', '[cdio:notify] Watch gone is not in the cache; opening its diff page without marking it viewed')).toBe(true);
+  });
+
+  test('summary id opens the server', () => {
+    expect(notificationClickTarget(SUMMARY_NOTIFICATION_ID, 'http://h:5000', cached)).toEqual({ url: 'http://h:5000' });
   });
 });
