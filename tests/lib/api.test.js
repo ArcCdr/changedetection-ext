@@ -108,3 +108,49 @@ describe('ChangeDetectionClient.request', () => {
     expect(globalThis.fetch).toHaveBeenCalledWith(`${BASE}/api/v1/watch`, expect.any(Object));
   });
 });
+
+describe('ChangeDetectionClient endpoints', () => {
+  test('listWatches GETs /api/v1/watch', async () => {
+    const fetchImpl = jest.fn().mockResolvedValue(jsonResponse({ u: {} }));
+    expect(await client(fetchImpl).listWatches()).toEqual({ u: {} });
+    expect(fetchImpl.mock.calls[0][0]).toBe(`${BASE}/api/v1/watch`);
+  });
+
+  test('markViewed PUTs last_viewed = now when now is later', async () => {
+    jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000_500);
+    const fetchImpl = jest.fn().mockResolvedValue(jsonResponse('OK'));
+    await client(fetchImpl).markViewed('a/b', 1_600_000_000);
+    const [url, init] = fetchImpl.mock.calls[0];
+    expect(url).toBe(`${BASE}/api/v1/watch/a%2Fb`);
+    expect(init.method).toBe('PUT');
+    expect(JSON.parse(init.body)).toEqual({ last_viewed: 1_700_000_000 });
+  });
+
+  test('markViewed uses lastChanged when the local clock is behind', async () => {
+    jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
+    const fetchImpl = jest.fn().mockResolvedValue(jsonResponse('OK'));
+    await client(fetchImpl).markViewed('u', 1_700_000_100);
+    expect(JSON.parse(fetchImpl.mock.calls[0][1].body)).toEqual({ last_viewed: 1_700_000_100 });
+  });
+
+  test('systemInfo GETs /api/v1/systeminfo', async () => {
+    const fetchImpl = jest.fn().mockResolvedValue(jsonResponse({ version: '0.50.12', watch_count: 3 }));
+    expect(await client(fetchImpl).systemInfo()).toEqual({ version: '0.50.12', watch_count: 3 });
+    expect(fetchImpl.mock.calls[0][0]).toBe(`${BASE}/api/v1/systeminfo`);
+  });
+
+  test('createWatch POSTs the url', async () => {
+    const fetchImpl = jest.fn().mockResolvedValue(jsonResponse({ uuid: 'new' }, 201));
+    expect(await client(fetchImpl).createWatch('https://example.com')).toEqual({ uuid: 'new' });
+    const [url, init] = fetchImpl.mock.calls[0];
+    expect(url).toBe(`${BASE}/api/v1/watch`);
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(init.body)).toEqual({ url: 'https://example.com' });
+  });
+
+  test('recheckAll GETs /api/v1/watch?recheck_all=1', async () => {
+    const fetchImpl = jest.fn().mockResolvedValue(jsonResponse({ status: 'OK, queued 3 watches for rechecking' }, 202));
+    expect(await client(fetchImpl).recheckAll()).toEqual({ status: 'OK, queued 3 watches for rechecking' });
+    expect(fetchImpl.mock.calls[0][0]).toBe(`${BASE}/api/v1/watch?recheck_all=1`);
+  });
+});
