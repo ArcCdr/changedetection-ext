@@ -8,7 +8,7 @@ import { readWatchCache } from '../lib/cache.js';
 import { formatRelativeTime } from '../lib/format.js';
 import { createLogger } from '../lib/log.js';
 import { ACTIONS, sendMessage } from '../lib/messages.js';
-import { isConfigured, loadSettings } from '../lib/settings.js';
+import { isConfigured, loadSettings, requestHostPermission } from '../lib/settings.js';
 import { isUnread, primaryUrl, sortWatches } from '../lib/watches.js';
 import { buildWatchItem } from './watch-item.js';
 
@@ -48,6 +48,7 @@ export class PopupManager {
     this.el.watchesContainer.addEventListener('click', (event) => this.onListClick(event));
     this.el.watchesContainer.addEventListener('auxclick', (event) => this.onListClick(event));
     this.el.markAllBtn.addEventListener('click', () => this.markAllViewed());
+    this.el.grantBtn.addEventListener('click', () => this.grantAccess());
   }
 
   /**
@@ -205,6 +206,21 @@ export class PopupManager {
         ? `Marked ${markedUuids.length} of ${items.length} viewed; ${failed} failed`
         : `Marked ${markedUuids.length} viewed`,
     );
+  }
+
+  /**
+   * Request host permission for the server, then retry. Called from a click handler.
+   *
+   * @returns {Promise<void>} Resolves when access was refused or the refresh finished.
+   */
+  async grantAccess() {
+    const granted = await requestHostPermission(this.settings.baseURL);
+    if (!granted) {
+      this.setStatus('Access not granted. The extension cannot reach your server without it.');
+      return;
+    }
+    this.showState('loading');
+    await this.refresh();
   }
 }
 
