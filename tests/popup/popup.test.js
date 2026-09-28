@@ -183,6 +183,30 @@ describe('opening watches', () => {
     expect(calls.every((request) => request.background === true && request.url === 'https://n.example/')).toBe(true);
   });
 
+  test('Diff link click opens the diff page in the foreground and marks the row read', async () => {
+    const popup = await ready();
+    const diff = document.querySelector('[data-uuid="u"] .watch-diff');
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+    diff.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+    expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+      action: 'openWatch', uuid: 'u', url: `${BASE}/diff/u`, lastChanged: 100, background: false,
+    });
+    expect(document.querySelector('[data-uuid="u"]').classList.contains('unread')).toBe(false);
+    expect(popup.watches.find((w) => w.uuid === 'u').viewed).toBe(true);
+  });
+
+  test('ctrl/cmd-click and middle-click on the Diff link open it in the background', async () => {
+    await ready();
+    const diff = () => document.querySelector('[data-uuid="u"] .watch-diff');
+    diff().dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: true }));
+    diff().dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, metaKey: true }));
+    diff().dispatchEvent(new MouseEvent('auxclick', { bubbles: true, cancelable: true, button: 1 }));
+    const calls = chrome.runtime.sendMessage.mock.calls.map(([request]) => request);
+    expect(calls).toHaveLength(3);
+    expect(calls.every((request) => request.background === true && request.url === `${BASE}/diff/u`)).toBe(true);
+  });
+
   test('right-click (auxclick button 2) and clicks outside rows are ignored', async () => {
     await ready();
     document.querySelector('[data-uuid="n"] .watch-main')
@@ -194,7 +218,7 @@ describe('opening watches', () => {
   test('a failed openWatch is reported in the status line', async () => {
     const popup = await ready();
     answer({ openWatch: { success: false, error: 'Server error (HTTP 500)' } });
-    await popup.openWatch(popup.watches[0], false);
+    await popup.openWatch(popup.watches[0], false, `${BASE}/diff/u`);
     expect(document.getElementById('statusLine').textContent).toBe('Could not mark as viewed: Server error (HTTP 500)');
   });
 });
