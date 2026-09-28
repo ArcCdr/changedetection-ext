@@ -120,6 +120,37 @@ describe('bootstrap', () => {
   });
 });
 
+describe('notifications toggle', () => {
+  test('ticking requests the notifications permission and saving stores the flag', async () => {
+    const options = setup();
+    fill();
+    const box = document.getElementById('notificationsEnabled');
+    box.checked = true;
+    await options.onNotificationsToggle();
+    expect(chrome.permissions.request).toHaveBeenCalledWith({ permissions: ['notifications'] });
+    expect(box.checked).toBe(true);
+    await options.save();
+    expect((await chrome.storage.sync.get('notificationsEnabled')).notificationsEnabled).toBe(true);
+  });
+
+  test('refused permission unticks the box', async () => {
+    setup();
+    const box = document.getElementById('notificationsEnabled');
+    chrome.permissions.request.mockResolvedValueOnce(false);
+    box.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(box.checked).toBe(false);
+    expect(message().text).toBe('Chrome did not allow notifications.');
+  });
+
+  test('unticking does not prompt', async () => {
+    const options = setup();
+    document.getElementById('notificationsEnabled').checked = false;
+    await options.onNotificationsToggle();
+    expect(chrome.permissions.request).not.toHaveBeenCalled();
+  });
+});
+
 describe('test connection', () => {
   test('tests the unsaved values through the service worker without storing them', async () => {
     const options = setup();
