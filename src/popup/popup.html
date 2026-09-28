@@ -1,44 +1,55 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ChangeDetection.io Monitor</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <div class="container">
-    <header>
-      <a id="titleLink" href="#" class="title-link">
-        <h1>ChangeDetection.io</h1>
-      </a>
-      <button id="settingsBtn" class="settings-btn" title="Settings">⚙️</button>
-    </header>
-    
-    <div id="loadingState" class="loading">
-      <div class="spinner"></div>
-      <p>Loading watches...</p>
+  <header class="header">
+    <a id="titleLink" class="title-link" href="#" target="_blank" rel="noopener">ChangeDetection.io</a>
+    <div class="header-actions">
+      <button id="refreshBtn" class="icon-btn" type="button" title="Refresh" aria-label="Refresh">↻</button>
+      <button id="settingsBtn" class="icon-btn" type="button" title="Settings" aria-label="Settings">⚙</button>
     </div>
-    
-    <div id="errorState" class="error" style="display: none;">
-      <p id="errorMessage"></p>
-      <button id="retryBtn" class="retry-btn">Retry</button>
+  </header>
+
+  <p id="statusLine" class="status-line" role="status" aria-live="polite"></p>
+
+  <section id="loadingState" class="state" hidden>
+    <div class="spinner" aria-hidden="true"></div>
+    <p>Loading watches…</p>
+  </section>
+
+  <section id="errorState" class="state state-error" hidden>
+    <p id="errorMessage"></p>
+    <div class="state-actions">
+      <button id="grantBtn" class="btn btn-primary" type="button" hidden>Grant access</button>
+      <button id="retryBtn" class="btn" type="button">Retry</button>
     </div>
-    
-    <div id="noConfigState" class="no-config" style="display: none;">
-      <p>Please configure your server URL and API key first.</p>
-      <button id="configureBtn" class="configure-btn">Configure</button>
+  </section>
+
+  <section id="noConfigState" class="state" hidden>
+    <p>Connect the extension to your changedetection.io server.</p>
+    <button id="configureBtn" class="btn btn-primary" type="button">Open settings</button>
+  </section>
+
+  <section id="watchesList" hidden>
+    <div id="pageBar" class="page-bar" hidden>
+      <button id="watchPageBtn" class="btn btn-small" type="button">+ Watch this page</button>
+      <span id="pageStatus" class="page-status"></span>
     </div>
-    
-    <div id="watchesList" class="watches-list" style="display: none;">
-      <div id="watchesContainer"></div>
-      <div class="footer">
-        <button id="refreshBtn" class="refresh-btn">Refresh</button>
-        <button id="markAllBtn" class="mark-all-btn">Mark all as watched</button>
-      </div>
+    <div id="filterBar" class="filter-bar" hidden>
+      <input id="filterInput" type="search" placeholder="Filter watches" aria-label="Filter watches">
     </div>
-  </div>
-  
-  <script src="popup.js"></script>
+    <ul id="watchesContainer" class="watch-list"></ul>
+    <p id="emptyMessage" class="empty" hidden></p>
+    <footer class="footer">
+      <button id="markAllBtn" class="btn btn-primary" type="button">Mark all viewed</button>
+      <button id="recheckAllBtn" class="btn" type="button">Recheck all</button>
+    </footer>
+  </section>
+
+  <script type="module" src="popup.js"></script>
 </body>
 </html>

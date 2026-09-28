@@ -1,236 +1,300 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f6f7fb;
+  --surface: #ffffff;
+  --text: #1f2330;
+  --muted: #5f6675;
+  --border: #dde1ea;
+  --accent: #5a67d8;
+  --accent-hover: #4c56c0;
+  --accent-contrast: #ffffff;
+  --unread: #d93025;
+  --warning: #9a5b00;
+  --focus: #7c8cff;
+  --header-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15171e;
+    --surface: #1f222b;
+    --text: #e7e9ef;
+    --muted: #a3a9b7;
+    --border: #323644;
+    --accent: #7f8cff;
+    --accent-hover: #95a0ff;
+    --accent-contrast: #0f1117;
+    --unread: #ff6b61;
+    --warning: #f2b84b;
+    --focus: #a5b0ff;
+  }
+}
+
+[hidden] {
+  display: none !important;
+}
+
+* {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
-  padding: 0;
-  width: 350px;
+  width: 360px;
   max-height: 600px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: 14px;
-  background-color: #f8f9fa;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
-.container {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 
-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 15px;
+.header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px;
+  background: var(--header-bg);
+  color: #ffffff;
 }
 
 .title-link {
-  text-decoration: none;
   color: inherit;
-  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
 }
 
-.title-link:hover h1 {
+.title-link:hover {
   text-decoration: underline;
 }
 
-header h1 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
+.header-actions {
+  display: flex;
+  gap: 4px;
 }
 
-.settings-btn {
-  background: none;
-  border: none;
-  color: white;
+.icon-btn {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
   font-size: 16px;
   cursor: pointer;
-  padding: 5px;
-  border-radius: 3px;
-  transition: background-color 0.2s;
 }
 
-.settings-btn:hover {
-  background-color: rgba(255,255,255,0.2);
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
-.loading {
+.status-line {
+  min-height: 1.4em;
+  margin: 0;
+  padding: 4px 14px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.state {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 40px 20px;
+  gap: 12px;
+  padding: 32px 20px;
   text-align: center;
+}
+
+.state p {
+  margin: 0;
+}
+
+.state-error p {
+  color: var(--unread);
+  overflow-wrap: anywhere;
+}
+
+.state-actions {
+  display: flex;
+  gap: 8px;
 }
 
 .spinner {
-  width: 30px;
-  height: 30px;
-  border: 3px solid #f3f3f3;
-  border-top: 3px solid #667eea;
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 1s linear infinite;
-  margin-bottom: 15px;
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-.error {
-  padding: 20px;
-  text-align: center;
-  color: #e74c3c;
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 3s;
+  }
 }
 
-.error p {
-  margin-bottom: 15px;
-  line-height: 1.4;
-}
-
-.retry-btn, .configure-btn, .refresh-btn, .mark-all-btn {
-  background: #667eea;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
-  cursor: pointer;
+.btn {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
   font-size: 13px;
-  transition: background-color 0.2s;
+  cursor: pointer;
 }
 
-.retry-btn:hover, .configure-btn:hover, .refresh-btn:hover, .mark-all-btn:hover {
-  background: #5a6fd8;
+.btn:hover:not(:disabled) {
+  border-color: var(--accent);
 }
 
-.no-config {
-  padding: 20px;
-  text-align: center;
-  color: #666;
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
-.no-config p {
-  margin-bottom: 15px;
-  line-height: 1.4;
+.btn-primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
 }
 
-.watches-list {
-  flex: 1;
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.btn-small {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.page-bar,
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+}
+
+.page-status {
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.filter-bar input {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.watch-list {
+  max-height: 400px;
+  margin: 0;
+  padding: 4px 10px 10px;
   overflow-y: auto;
-  max-height: 500px;
-}
-
-#watchesContainer {
-  padding: 10px;
+  list-style: none;
 }
 
 .watch-item {
-  background: white;
-  border: 1px solid #e1e8ed;
+  display: flex;
+  align-items: stretch;
+  margin-bottom: 6px;
+  border: 1px solid var(--border);
+  border-left: 4px solid transparent;
   border-radius: 6px;
-  margin-bottom: 8px;
-  padding: 12px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  text-decoration: none;
-  color: inherit;
-  display: block;
+  background: var(--surface);
 }
 
 .watch-item:hover {
-  background: #f5f8ff;
-  border-color: #667eea;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  border-color: var(--accent);
 }
 
-.watch-item.unread {
-  border-left: 4px solid #e74c3c;
+.watch-item.unread,
+.watch-item.unread:hover {
+  border-left-color: var(--unread);
 }
 
-.watch-item.unread .watch-title {
-  font-weight: bold;
+.watch-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 8px 10px;
+  color: inherit;
+  text-decoration: none;
 }
 
 .watch-title {
-  font-size: 14px;
-  line-height: 1.4;
-  margin-bottom: 6px;
-  color: #1a1a1a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.watch-url {
-  font-size: 12px;
-  color: #666;
-  word-break: break-all;
-  line-height: 1.3;
+.watch-item.unread .watch-title {
+  font-weight: 600;
 }
 
-.watch-status {
+.watch-meta {
+  color: var(--muted);
   font-size: 11px;
-  color: #999;
-  margin-top: 4px;
+}
+
+.watch-error {
+  overflow: hidden;
+  color: var(--warning);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.watch-site {
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  border-left: 1px solid var(--border);
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.watch-site:hover {
+  color: var(--accent);
+}
+
+.empty {
+  margin: 0;
+  padding: 24px 20px;
+  color: var(--muted);
+  text-align: center;
 }
 
 .footer {
   position: sticky;
   bottom: 0;
-  padding: 12px;
-  border-top: 1px solid #e0e0e0;
-  background: white;
-  text-align: center;
   display: flex;
   gap: 8px;
-  justify-content: center;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
 }
 
-.refresh-btn, .mark-all-btn {
-  font-size: 12px;
-  padding: 6px 12px;
+.footer .btn {
   flex: 1;
-  max-width: 120px;
-}
-
-.mark-all-btn {
-  background: #28a745;
-}
-
-.mark-all-btn:hover {
-  background: #218838;
-}
-
-.mark-all-btn:disabled {
-  background: #6c757d;
-  cursor: not-allowed;
-}
-
-.empty-state {
-  padding: 40px 20px;
-  text-align: center;
-  color: #666;
-}
-
-.empty-state p {
-  margin: 0;
-  line-height: 1.4;
-}
-
-/* Scrollbar styling */
-.watches-list::-webkit-scrollbar {
-  width: 6px;
-}
-
-.watches-list::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
-
-.watches-list::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 3px;
-}
-
-.watches-list::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
 }
