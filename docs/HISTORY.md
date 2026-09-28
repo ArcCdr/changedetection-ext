@@ -1,5 +1,13 @@
 # History
 
+## 1.1.1 — 2026-09-28
+
+- Clicking a watch opens the monitored page again, as in 1.0.x. Watches that have changed get a
+  **Diff** button that opens the diff page instead. Both mark the watch viewed, and both open in a
+  background tab with Ctrl/Cmd-click or middle-click.
+- Clicking a single-watch desktop notification now opens the monitored page and marks the watch
+  viewed, so the badge updates.
+
 ## 1.1.0 — 2026-09-28
 
 - Fixed the unread rule: a brand-new watch (never changed) no longer lights the badge or shows as

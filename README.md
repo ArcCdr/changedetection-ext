@@ -8,16 +8,18 @@ without opening the server's web UI.
 
 - Toolbar badge shows the unread count (capped at `99+`) and turns into a grey `!` with the
   error in its tooltip when the server can't be reached.
-- Click a watch to open its diff page and mark it viewed; the `↗` link opens the monitored page
-  itself.
-- Ctrl/Cmd-click or middle-click a watch to open it in a background tab and keep the popup open.
+- Click a watch to open the monitored page, or its **Diff** button to see what changed on your
+  server; either click marks the watch viewed.
+- Ctrl/Cmd-click or middle-click a watch or its **Diff** button to open it in a background tab and
+  keep the popup open.
 - **Mark all viewed** and **Recheck all** buttons for bulk actions.
 - A filter box appears once you have 10 or more watches.
 - **Watch this page** adds the active browser tab as a new watch.
 - Watches with a server-side error show a warning marker with the error as a tooltip.
 - Dark mode follows your OS theme; every control is keyboard accessible.
 - `Alt+Shift+D` opens the popup without touching the mouse.
-- Optional desktop notifications when a watch changes.
+- Optional desktop notifications when a watch changes; clicking one opens the page and marks the
+  watch viewed.
 
 ## Requirements
 

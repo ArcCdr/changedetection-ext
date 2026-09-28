@@ -15,13 +15,13 @@ loaded unpacked as-is and zipped as-is for release.
 | `lib/format.js` | `formatRelativeTime` for "2h ago"-style timestamps. |
 | `lib/log.js` | `createLogger(scope)`, the only allowed use of `console.*`. |
 | `lib/messages.js` | The `ACTIONS` enum and `sendMessage()`, the non-throwing request helper used by the popup and options pages. |
-| `lib/notify.js` | Opt-in desktop notifications for watches that changed since the previous refresh, and the URL a notification click opens. |
+| `lib/notify.js` | Opt-in desktop notifications for watches that changed since the previous refresh, and what a notification click opens (`notificationClickTarget`). |
 | `lib/refresh.js` | `refreshWatches()`: the refresh cycle described below. |
 | `lib/scheduler.js` | Creates/renews the `refreshWatches` alarm and removes alarms used by versions ≤ 1.0.1. |
 | `lib/settings.js` | Settings defaults, validation, loading, and host-permission helpers. |
-| `lib/watches.js` | Pure helpers over watch objects: `normalizeWatchList`, `isUnread`, `countUnread`, `displayTitle`, `siteUrl`, `primaryUrl`, `sortWatches`, `filterWatches`, `findWatchByUrl`. No `chrome.*` or network access. |
+| `lib/watches.js` | Pure helpers over watch objects: `normalizeWatchList`, `isUnread`, `countUnread`, `displayTitle`, `siteUrl`, `diffUrl`, `primaryUrl`, `sortWatches`, `filterWatches`, `findWatchByUrl`. No `chrome.*` or network access. |
 | `popup/popup.js` | `PopupManager`: the popup page controller. |
-| `popup/watch-item.js` | Builds the `<li>` DOM node for one watch, with `createElement`/`textContent` only. |
+| `popup/watch-item.js` | Builds the `<li>` DOM node for one watch: the row link (`a.watch-main`) and, once the watch has changed, the `a.watch-diff` Diff link, with `createElement`/`textContent` only. |
 | `popup/popup.html`, `popup.css` | Popup markup and styles (light/dark). |
 | `options/options.js` | `OptionsManager`: the options page controller. |
 | `options/options.html`, `options.css` | Options markup and styles (light/dark). |
@@ -42,7 +42,8 @@ permission (`background.js`).
   key is not set; the grey `!` carries the error message in its tooltip.
 - **Cache** — every successful refresh overwrites `watchCache` (`chrome.storage.session`).
   `openWatch`/`markAllViewed` update it in place (`markCachedViewed`) so the badge reflects a
-  mark-as-viewed without a full refetch.
+  mark-as-viewed without a full refetch. A notification click reads the cache to find the
+  notified watch (`onNotificationClicked`).
 - **Notifications baseline** — every refresh (successful or not attempted due to missing config)
   stores the currently unread UUIDs in `notifiedUuids` (`chrome.storage.local`). The first run
   only stores the baseline; later runs notify for UUIDs unread now but absent from the previous
@@ -93,8 +94,14 @@ snapshots; `viewed` is the server's own read/unread flag and defaults to `false`
 watch. `isUnread` is therefore `last_changed > 0 && viewed === false` — a new watch is never
 unread even though `viewed` is `false`. Marking viewed sends a single
 `PUT /api/v1/watch/<uuid>` with `{last_viewed: max(now, lastChanged)}`, the `max` absorbing clock
-skew between browser and server. `${baseURL}/diff/<uuid>` is the diff page opened for a changed
-watch (`primaryUrl`) and for a single-watch notification click (`notificationTarget`).
+skew between browser and server.
+
+- `diffUrl` builds `${baseURL}/diff/<uuid>`. It exists only once `last_changed > 0` (the server
+  redirects to its watch list with fewer than two snapshots), so the Diff link is shown only then.
+- A row click and a single-watch notification click open `primaryUrl`: `siteUrl`, else the diff
+  for a changed watch, else the server.
+- Row, Diff and notification clicks all go through `openWatch`, which marks the watch viewed.
+- A notification for a watch missing from the cache opens the diff without marking it.
 
 ## Logging
 
