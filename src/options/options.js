@@ -39,6 +39,7 @@ export class OptionsManager {
     });
     this.form.addEventListener('input', () => this.hideMessage());
     this.testBtn.addEventListener('click', () => this.testConnection());
+    this.notificationsInput.addEventListener('change', () => this.onNotificationsToggle());
   }
 
   /**
@@ -134,6 +135,20 @@ export class OptionsManager {
       this.showMessage('success', `Connected: changedetection.io ${version}, ${watchCount} watches.`);
     } else {
       this.showMessage('error', `Connection failed: ${response.error}`);
+    }
+  }
+
+  /**
+   * Ask for the notifications permission when the checkbox is ticked; untick it if refused.
+   *
+   * @returns {Promise<void>} Resolves when the permission prompt is answered.
+   */
+  async onNotificationsToggle() {
+    if (!this.notificationsInput.checked) return;
+    const granted = await chrome.permissions.request({ permissions: ['notifications'] });
+    if (!granted) {
+      this.notificationsInput.checked = false;
+      this.showMessage('error', 'Chrome did not allow notifications.');
     }
   }
 }
