@@ -1,23 +1,16 @@
 {
   "manifest_version": 3,
   "name": "ChangeDetection.io Monitor",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Monitor your changedetection.io watches directly from your browser",
-  
-  "permissions": [
-    "storage",
-    "alarms",
-    "idle"
-  ],
-  
-  "optional_permissions": [
-    "tabs"
-  ],
-  
+  "minimum_chrome_version": "120",
+  "permissions": ["storage", "alarms", "idle", "activeTab"],
+  "optional_permissions": ["notifications"],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
-  
   "action": {
     "default_popup": "popup/popup.html",
     "default_title": "ChangeDetection.io Monitor",
@@ -30,12 +23,16 @@
       "128": "icons/icon128.png"
     }
   },
-  
   "options_page": "options/options.html",
-  
+  "commands": {
+    "_execute_action": {
+      "suggested_key": { "default": "Alt+Shift+D" },
+      "description": "Open the watch list"
+    }
+  },
   "icons": {
     "16": "icons/icon16.png",
-    "24": "icons/icon24.png", 
+    "24": "icons/icon24.png",
     "32": "icons/icon32.png",
     "48": "icons/icon48.png",
     "64": "icons/icon64.png",

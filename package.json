@@ -1,8 +1,8 @@
 {
   "name": "changedetection-browser-extension",
-  "version": "1.0.0",
-  "description": "Browser extension to monitor changedetection.io watches",
-  "main": "background.js",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Chrome extension to monitor changedetection.io watches",
   "scripts": {
     "test": "jest",
     "test:watch": "jest --watch",
@@ -16,7 +16,7 @@
     "monitoring",
     "chrome"
   ],
-  "author": "Your Name",
+  "author": "ArcCdr",
   "license": "MIT",
   "devDependencies": {
     "@babel/core": "7.29.7",
