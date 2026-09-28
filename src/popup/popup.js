@@ -4,6 +4,7 @@
  * All server work goes through the service worker (lib/messages.js), so it completes even
  * when the popup closes.
  */
+import { readWatchCache } from '../lib/cache.js';
 import { formatRelativeTime } from '../lib/format.js';
 import { createLogger } from '../lib/log.js';
 import { ACTIONS, sendMessage } from '../lib/messages.js';
@@ -50,7 +51,7 @@ export class PopupManager {
   }
 
   /**
-   * Load settings, then fetch and show the watches.
+   * Load settings, show cached watches immediately, then refresh from the server.
    *
    * @returns {Promise<void>} Resolves when the first refresh finished.
    */
@@ -61,7 +62,15 @@ export class PopupManager {
       return;
     }
     this.el.titleLink.href = this.settings.baseURL;
-    this.showState('loading');
+    const cache = await readWatchCache();
+    if (cache) {
+      this.watches = cache.watches;
+      this.fetchedAt = cache.fetchedAt;
+      this.render();
+      this.showState('watches');
+    } else {
+      this.showState('loading');
+    }
     await this.refresh();
   }
 
@@ -113,6 +122,11 @@ export class PopupManager {
       return;
     }
     log.warn('Could not load watches: %s', response.error);
+    if (response.errorKind !== 'permission' && !this.el.watchesList.hidden) {
+      const age = formatRelativeTime(Math.floor(this.fetchedAt / 1000));
+      this.setStatus(`Update failed: ${response.error} (showing results from ${age})`);
+      return;
+    }
     this.showError(response.error, response.errorKind);
   }
 
