@@ -44,4 +44,10 @@ describe('popup.css', () => {
     expect(css).toContain(':focus-visible');
     expect(css).toContain('@media (prefers-reduced-motion: reduce)');
   });
+
+  test('styles the Diff link and no longer the monitored-page link', () => {
+    expect(css).toContain('.watch-diff {');
+    expect(css).toContain('.watch-diff:hover {');
+    expect(css).not.toContain('.watch-site');
+  });
 });

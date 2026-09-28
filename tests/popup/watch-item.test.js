@@ -19,7 +19,7 @@ describe('watchMeta', () => {
 });
 
 describe('buildWatchItem', () => {
-  test('unread changed watch links to the diff page and the monitored page', () => {
+  test('unread changed watch has a Diff link to its diff page', () => {
     const item = buildWatchItem(document, {
       uuid: 'u1', title: 'Prices', url: 'https://shop.example/item', last_changed: TWO_HOURS_AGO, viewed: false,
     }, BASE);
@@ -30,12 +30,14 @@ describe('buildWatchItem', () => {
     expect(main.getAttribute('href')).toBe(`${BASE}/diff/u1`);
     expect(main.querySelector('.watch-title').textContent).toBe('Prices');
     expect(main.querySelector('.watch-meta').textContent).toMatch(/^Unread · Changed /);
-    const site = item.querySelector('a.watch-site');
-    expect(site.getAttribute('href')).toBe('https://shop.example/item');
-    expect(site.target).toBe('_blank');
-    expect(site.rel).toBe('noopener');
-    expect(site.getAttribute('aria-label')).toBe('Open monitored page: Prices');
-    expect(site.textContent).toBe('↗');
+    const diff = item.querySelector('a.watch-diff');
+    expect(diff.getAttribute('href')).toBe(`${BASE}/diff/u1`);
+    expect(diff.target).toBe('_blank');
+    expect(diff.rel).toBe('noopener');
+    expect(diff.title).toBe('Open diff');
+    expect(diff.getAttribute('aria-label')).toBe('Open diff: Prices');
+    expect(diff.textContent).toBe('Diff');
+    expect(item.querySelector('.watch-site')).toBeNull();
   });
 
   test('titles are text, never HTML', () => {
@@ -44,11 +46,30 @@ describe('buildWatchItem', () => {
     expect(item.querySelector('.watch-title').textContent).toBe('<img src=x onerror=alert(1)>');
   });
 
-  test('read watch without an http(s) page has no site link', () => {
-    const item = buildWatchItem(document, { uuid: 'x', url: 'file:///tmp', last_changed: 0, viewed: true }, BASE);
+  test('never-changed watch has no Diff link, with or without an http(s) page', () => {
+    const withSite = buildWatchItem(document, { uuid: 'x', url: 'https://a.example/', last_changed: 0, viewed: false }, BASE);
+    expect(withSite.classList.contains('unread')).toBe(false);
+    expect(withSite.querySelector('.watch-diff')).toBeNull();
+    expect(withSite.querySelector('.watch-site')).toBeNull();
+    const withoutSite = buildWatchItem(document, { uuid: 'y', url: 'file:///tmp', last_changed: 0, viewed: true }, BASE);
+    expect(withoutSite.querySelector('.watch-diff')).toBeNull();
+    expect(withoutSite.querySelector('.watch-main').getAttribute('href')).toBe(BASE);
+  });
+
+  test('read changed watch keeps its Diff link', () => {
+    const item = buildWatchItem(document, {
+      uuid: 'r', title: 'Docs', url: 'https://r.example/', last_changed: TWO_HOURS_AGO, viewed: true,
+    }, BASE);
     expect(item.classList.contains('unread')).toBe(false);
-    expect(item.querySelector('.watch-site')).toBeNull();
-    expect(item.querySelector('.watch-main').getAttribute('href')).toBe(BASE);
+    expect(item.querySelector('a.watch-diff').getAttribute('href')).toBe(`${BASE}/diff/r`);
+    expect(item.querySelector('a.watch-diff').getAttribute('aria-label')).toBe('Open diff: Docs');
+  });
+
+  test('changed watch without an http(s) page still has a Diff link', () => {
+    const item = buildWatchItem(document, {
+      uuid: 's', url: 'source:https://s.example/', last_changed: TWO_HOURS_AGO, viewed: false,
+    }, BASE);
+    expect(item.querySelector('a.watch-diff').getAttribute('href')).toBe(`${BASE}/diff/s`);
   });
 
   test('last_error adds a warning line with the full text as tooltip', () => {
