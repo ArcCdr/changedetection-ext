@@ -94,11 +94,12 @@ export function diffUrl(baseURL, uuid) {
  *
  * @param {string} baseURL - Normalized server URL without trailing slash.
  * @param {Watch} watch - The watch.
- * @returns {string} The server diff page when the watch has changed; otherwise siteUrl(watch), or baseURL when that is null.
+ * @returns {string} siteUrl(watch); when that is null, the server diff page for a changed watch, otherwise baseURL.
  */
 export function primaryUrl(baseURL, watch) {
-  if (Number(watch.last_changed) > 0) return diffUrl(baseURL, watch.uuid);
-  return siteUrl(watch) ?? baseURL;
+  const site = siteUrl(watch);
+  if (site) return site;
+  return Number(watch.last_changed) > 0 ? diffUrl(baseURL, watch.uuid) : baseURL;
 }
 
 /**
