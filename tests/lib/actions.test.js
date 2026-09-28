@@ -1,6 +1,6 @@
-import { markAllViewed, MARK_ALL_CONCURRENCY, openWatch } from '../../src/lib/actions.js';
+import { addWatch, markAllViewed, MARK_ALL_CONCURRENCY, openWatch, recheckAll, testConnection } from '../../src/lib/actions.js';
 import { readWatchCache, writeWatchCache } from '../../src/lib/cache.js';
-import { hasLog } from '../helpers/logs.js';
+import { allLogText, hasLog } from '../helpers/logs.js';
 
 const BASE = 'http://192.168.1.10:5000';
 
@@ -93,5 +93,63 @@ describe('markAllViewed', () => {
   test('an empty list makes no requests', async () => {
     expect(await markAllViewed([])).toEqual({ markedUuids: [], failed: 0 });
     expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe('testConnection', () => {
+  test('queries systeminfo with the unsaved values and does not store them', async () => {
+    globalThis.fetch.mockResolvedValue(jsonResponse({ version: '0.50.12', watch_count: 7 }));
+    const result = await testConnection({ baseURL: 'http://other:5000/', apiKey: ' new-key ' });
+    expect(result).toEqual({ version: '0.50.12', watchCount: 7 });
+    expect(globalThis.fetch.mock.calls[0][0]).toBe('http://other:5000/api/v1/systeminfo');
+    expect(globalThis.fetch.mock.calls[0][1].headers['x-api-key']).toBe('new-key');
+    expect(await chrome.storage.sync.get(null)).toEqual({ baseURL: BASE, apiKey: 'secret-key' });
+    expect(hasLog('info', 'Connection test passed: http://other:5000 runs version 0.50.12 with 7 watches')).toBe(true);
+    expect(allLogText()).not.toContain('new-key');
+  });
+
+  test('invalid values reject without a request', async () => {
+    await expect(testConnection({ baseURL: 'nope', apiKey: 'k' })).rejects.toThrow(
+      'Enter a valid http:// or https:// URL, e.g. http://192.168.1.10:5000',
+    );
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  test('server errors reject and warn', async () => {
+    globalThis.fetch.mockResolvedValue(jsonResponse('x', 403));
+    await expect(testConnection({ baseURL: BASE, apiKey: 'bad' })).rejects.toMatchObject({ kind: 'auth' });
+    expect(hasLog('warn', `Connection test failed for ${BASE}: API key rejected (HTTP 403)`)).toBe(true);
+  });
+
+  test('missing fields fall back to unknown / 0', async () => {
+    globalThis.fetch.mockResolvedValue(jsonResponse({}));
+    expect(await testConnection({ baseURL: BASE, apiKey: 'k' })).toEqual({ version: 'unknown', watchCount: 0 });
+  });
+});
+
+describe('addWatch', () => {
+  test('POSTs the url and returns the uuid', async () => {
+    globalThis.fetch.mockResolvedValue(jsonResponse({ uuid: 'new-1' }, 201));
+    expect(await addWatch({ url: 'https://example.com/p' })).toEqual({ uuid: 'new-1' });
+    expect(JSON.parse(globalThis.fetch.mock.calls[0][1].body)).toEqual({ url: 'https://example.com/p' });
+    expect(hasLog('info', 'Added watch for https://example.com/p: uuid=new-1')).toBe(true);
+  });
+
+  test('returns an empty uuid when the server omits it', async () => {
+    globalThis.fetch.mockResolvedValue(jsonResponse(null, 201));
+    expect(await addWatch({ url: 'https://example.com/p' })).toEqual({ uuid: '' });
+  });
+});
+
+describe('recheckAll', () => {
+  test('returns the server status message', async () => {
+    globalThis.fetch.mockResolvedValue(jsonResponse({ status: 'OK, queued 4 watches for rechecking' }));
+    expect(await recheckAll()).toEqual({ message: 'OK, queued 4 watches for rechecking' });
+    expect(hasLog('info', 'Requested recheck of all watches: OK, queued 4 watches for rechecking')).toBe(true);
+  });
+
+  test('falls back to a generic message', async () => {
+    globalThis.fetch.mockResolvedValue(jsonResponse({}));
+    expect(await recheckAll()).toEqual({ message: 'Recheck queued' });
   });
 });
