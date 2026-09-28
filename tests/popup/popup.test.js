@@ -1,5 +1,5 @@
 import { writeWatchCache } from '../../src/lib/cache.js';
-import { PopupManager } from '../../src/popup/popup.js';
+import { FILTER_MIN_WATCHES, PopupManager } from '../../src/popup/popup.js';
 import { loadHtml } from '../helpers/dom.js';
 import { hasLog } from '../helpers/logs.js';
 
@@ -337,5 +337,41 @@ describe('recheck all', () => {
     answer({ recheckAll: { success: false, error: 'API key rejected (HTTP 403)' } });
     await popup.recheckAll();
     expect(document.getElementById('statusLine').textContent).toBe('Recheck failed: API key rejected (HTTP 403)');
+  });
+});
+
+describe('filter', () => {
+  test(`hidden below ${FILTER_MIN_WATCHES} watches`, async () => {
+    const popup = await setup();
+    answer({ getWatches: { success: true, data: { watches: [watch('a')], fetchedAt: Date.now() } } });
+    await popup.init();
+    expect(FILTER_MIN_WATCHES).toBe(10);
+    expect(document.getElementById('filterBar').hidden).toBe(true);
+  });
+
+  test('typing filters rows by title or url', async () => {
+    const popup = await setup();
+    const watches = Array.from({ length: FILTER_MIN_WATCHES }, (_, i) => watch(`w${i}`));
+    watches[3].title = 'Grafana release';
+    answer({ getWatches: { success: true, data: { watches, fetchedAt: Date.now() } } });
+    await popup.init();
+    expect(document.getElementById('filterBar').hidden).toBe(false);
+    const input = document.getElementById('filterInput');
+    input.value = 'grafana';
+    input.dispatchEvent(new Event('input'));
+    expect(rows()).toEqual(['w3']);
+    input.value = 'zzz';
+    input.dispatchEvent(new Event('input'));
+    expect(rows()).toEqual([]);
+    expect(document.getElementById('emptyMessage').textContent).toBe('No watches match the filter.');
+  });
+
+  test('the filter text is cleared when the bar hides', async () => {
+    const popup = await setup();
+    document.getElementById('filterInput').value = 'leftover';
+    answer({ getWatches: { success: true, data: { watches: [watch('a')], fetchedAt: Date.now() } } });
+    await popup.init();
+    expect(document.getElementById('filterInput').value).toBe('');
+    expect(rows()).toEqual(['a']);
   });
 });
