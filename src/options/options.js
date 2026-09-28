@@ -7,7 +7,8 @@
  * reach servers on the local network.
  */
 import { createLogger } from '../lib/log.js';
-import { loadSettings, requestHostPermission, validateSettings } from '../lib/settings.js';
+import { ACTIONS, sendMessage } from '../lib/messages.js';
+import { loadSettings, requestHostPermission, validateConnection, validateSettings } from '../lib/settings.js';
 
 const log = createLogger('options');
 
@@ -37,6 +38,7 @@ export class OptionsManager {
       this.save();
     });
     this.form.addEventListener('input', () => this.hideMessage());
+    this.testBtn.addEventListener('click', () => this.testConnection());
   }
 
   /**
@@ -105,6 +107,34 @@ export class OptionsManager {
   /** Hide the status message. */
   hideMessage() {
     this.message.hidden = true;
+  }
+
+  /**
+   * Test the typed server URL and API key without saving them. Called from a click handler.
+   *
+   * @returns {Promise<void>} Resolves when the result is shown.
+   */
+  async testConnection() {
+    const check = validateConnection(this.readForm());
+    if (!check.ok) {
+      this.showMessage('error', check.error);
+      return;
+    }
+    const granted = await requestHostPermission(check.value.baseURL);
+    if (!granted) {
+      this.showMessage('error', `Chrome needs access to ${check.value.baseURL} to reach your server.`);
+      return;
+    }
+    this.testBtn.disabled = true;
+    this.showMessage('info', 'Testing connection…');
+    const response = await sendMessage({ action: ACTIONS.TEST_CONNECTION, ...check.value });
+    this.testBtn.disabled = false;
+    if (response.success) {
+      const { version, watchCount } = response.data;
+      this.showMessage('success', `Connected: changedetection.io ${version}, ${watchCount} watches.`);
+    } else {
+      this.showMessage('error', `Connection failed: ${response.error}`);
+    }
   }
 }
 
