@@ -8,7 +8,7 @@ import globals from 'globals';
 
 // Pre-refactor files, exempt from the JSDoc, no-console and no-unused-vars rules until they
 // are rewritten. Each rewrite task removes its own entry; the list must end up empty.
-const LEGACY_FILES = ['src/options/options.js'];
+const LEGACY_FILES = [];
 
 export default [
   { ignores: ['dist/', 'coverage/', 'node_modules/'] },

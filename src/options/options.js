@@ -1,199 +1,113 @@
-// Options page script for ChangeDetection.io extension
+/**
+ * @file Options page controller for the extension settings (server URL, API key, refresh
+ * interval, notifications).
+ *
+ * Saving and testing first ask Chrome for access to the server origin (optional host
+ * permission) from inside the click, which Chrome requires before the service worker can
+ * reach servers on the local network.
+ */
+import { createLogger } from '../lib/log.js';
+import { loadSettings, requestHostPermission, validateSettings } from '../lib/settings.js';
 
-class OptionsManager {
-  constructor() {
-    this.form = document.getElementById('settingsForm');
-    this.baseURLInput = document.getElementById('baseURL');
-    this.apiKeyInput = document.getElementById('apiKey');
-    this.refreshIntervalInput = document.getElementById('refreshInterval');
-    this.testBtn = document.getElementById('testBtn');
-    this.testResult = document.getElementById('testResult');
-    this.testMessage = document.getElementById('testMessage');
-    this.saveResult = document.getElementById('saveResult');
-    this.saveMessage = document.getElementById('saveMessage');
-    this.versionNumber = document.getElementById('versionNumber');
+const log = createLogger('options');
 
-    this.initializeEventListeners();
-    this.loadSettings();
-    this.loadVersion();
+/** Controller for options.html. */
+export class OptionsManager {
+  /**
+   * Look up the form elements and wire their events.
+   *
+   * @param {Document} [doc] - Document holding options.html; defaults to the global document.
+   */
+  constructor(doc = document) {
+    this.form = doc.getElementById('settingsForm');
+    this.baseURLInput = doc.getElementById('baseURL');
+    this.apiKeyInput = doc.getElementById('apiKey');
+    this.refreshIntervalInput = doc.getElementById('refreshInterval');
+    this.notificationsInput = doc.getElementById('notificationsEnabled');
+    this.testBtn = doc.getElementById('testBtn');
+    this.message = doc.getElementById('message');
+    this.versionNumber = doc.getElementById('versionNumber');
+    this.bindEvents();
   }
 
-  initializeEventListeners() {
-    this.form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      this.saveSettings();
+  /** Attach the form's event listeners. */
+  bindEvents() {
+    this.form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      this.save();
     });
-
-    this.testBtn.addEventListener('click', () => {
-      this.testConnection();
-    });
-
-    // Auto-hide messages after a delay
-    this.baseURLInput.addEventListener('input', () => this.hideMessages());
-    this.apiKeyInput.addEventListener('input', () => this.hideMessages());
-    this.refreshIntervalInput.addEventListener('input', () => this.hideMessages());
+    this.form.addEventListener('input', () => this.hideMessage());
   }
 
-  async loadSettings() {
-    try {
-      const settings = await this.getStoredSettings();
-      
-      this.baseURLInput.value = settings.baseURL || '';
-      this.apiKeyInput.value = settings.apiKey || '';
-      this.refreshIntervalInput.value = settings.refreshInterval || 5;
-    } catch (error) {
-      console.error('Error loading settings:', error);
-    }
+  /**
+   * Show the version and fill the form with saved settings.
+   *
+   * @returns {Promise<void>} Resolves when the form is filled.
+   */
+  async init() {
+    this.versionNumber.textContent = `Version ${chrome.runtime.getManifest().version}`;
+    const settings = await loadSettings();
+    this.baseURLInput.value = settings.baseURL;
+    this.apiKeyInput.value = settings.apiKey;
+    this.refreshIntervalInput.value = String(settings.refreshInterval);
+    this.notificationsInput.checked = settings.notificationsEnabled;
   }
 
-  loadVersion() {
-    try {
-      const manifest = chrome.runtime.getManifest();
-      const version = manifest.version;
-      this.versionNumber.textContent = `Version: ${version}`;
-    } catch (error) {
-      console.error('Error loading version:', error);
-      this.versionNumber.textContent = 'Version: Unknown';
-    }
+  /**
+   * Read the current form values.
+   *
+   * @returns {{baseURL: string, apiKey: string, refreshInterval: number}} Raw values; refreshInterval converted with Number().
+   */
+  readForm() {
+    return {
+      baseURL: this.baseURLInput.value,
+      apiKey: this.apiKeyInput.value,
+      refreshInterval: Number(this.refreshIntervalInput.value),
+    };
   }
 
-  getStoredSettings() {
-    return new Promise((resolve) => {
-      chrome.storage.sync.get([
-        'baseURL', 
-        'apiKey', 
-        'refreshInterval',
-      ], (result) => {
-        resolve(result);
-      });
-    });
-  }
-
-  async saveSettings() {
-    const baseURL = this.baseURLInput.value.trim();
-    const apiKey = this.apiKeyInput.value.trim();
-    const refreshInterval = parseInt(this.refreshIntervalInput.value) || 5;
-
-    if (!baseURL || !apiKey) {
-      this.showSaveResult('error', 'Please fill in all required fields.');
+  /**
+   * Validate, request server access, then save. Called from the submit handler.
+   *
+   * @returns {Promise<void>} Resolves when saved or when an error is shown.
+   */
+  async save() {
+    const check = validateSettings(this.readForm());
+    if (!check.ok) {
+      this.showMessage('error', check.error);
       return;
     }
-
-    // Validate URL format
-    try {
-      new URL(baseURL);
-    } catch (error) {
-      this.showSaveResult('error', 'Please enter a valid URL (including http:// or https://).');
+    const granted = await requestHostPermission(check.value.baseURL);
+    if (!granted) {
+      this.showMessage('error', `Chrome needs access to ${check.value.baseURL} to reach your server.`);
+      log.warn('Settings not saved: access to %s was refused', check.value.baseURL);
       return;
     }
-
-    // Validate refresh interval
-    if (refreshInterval < 1 || refreshInterval > 1440) {
-      this.showSaveResult('error', 'Refresh interval must be between 1 and 1440 minutes.');
-      return;
-    }
-
-    try {
-      // Save to storage
-      await new Promise((resolve) => {
-        chrome.storage.sync.set({ 
-          baseURL, 
-          apiKey, 
-          refreshInterval 
-        }, resolve);
-      });
-
-      this.showSaveResult('success', 'Settings saved successfully!');
-      
-      // Trigger background script to update badge
-      chrome.runtime.sendMessage({ action: 'updateBadge' });
-    } catch (error) {
-      console.error('Error saving settings:', error);
-      this.showSaveResult('error', 'Failed to save settings. Please try again.');
-    }
+    await chrome.storage.sync.set({ ...check.value, notificationsEnabled: this.notificationsInput.checked });
+    this.baseURLInput.value = check.value.baseURL;
+    this.apiKeyInput.value = check.value.apiKey;
+    this.showMessage('success', 'Settings saved.');
+    log.info('Settings saved: server %s, refresh every %d min', check.value.baseURL, check.value.refreshInterval);
   }
 
-  async testConnection() {
-    const baseURL = this.baseURLInput.value.trim();
-    const apiKey = this.apiKeyInput.value.trim();
-
-    if (!baseURL || !apiKey) {
-      this.showTestResult('error', 'Please fill in both Server URL and API Key before testing.');
-      return;
-    }
-
-    // Validate URL format
-    try {
-      new URL(baseURL);
-    } catch (error) {
-      this.showTestResult('error', 'Please enter a valid URL (including http:// or https://).');
-      return;
-    }
-
-    this.testBtn.disabled = true;
-    this.showTestResult('loading', 'Testing connection...');
-
-    try {
-      // Save settings temporarily for test
-      await new Promise((resolve) => {
-        chrome.storage.sync.set({ baseURL, apiKey }, resolve);
-      });
-
-      // Test connection through background script
-      const response = await this.sendMessage({ action: 'testConnection' });
-
-      if (response.success) {
-        this.showTestResult('success', 'Connection successful! API is working correctly.');
-      } else {
-        this.showTestResult('error', `Connection failed: ${response.error}`);
-      }
-    } catch (error) {
-      console.error('Error testing connection:', error);
-      this.showTestResult('error', `Connection failed: ${error.message}`);
-    } finally {
-      this.testBtn.disabled = false;
-    }
+  /**
+   * Show the status message.
+   *
+   * @param {'success'|'error'|'info'} type - Message style.
+   * @param {string} text - Message text.
+   */
+  showMessage(type, text) {
+    this.message.className = `message message-${type}`;
+    this.message.textContent = text;
+    this.message.hidden = false;
   }
 
-  sendMessage(message) {
-    return new Promise((resolve) => {
-      chrome.runtime.sendMessage(message, (response) => {
-        resolve(response || { success: false, error: 'No response from background script' });
-      });
-    });
-  }
-
-  showTestResult(type, message) {
-    this.testResult.className = `test-result ${type}`;
-    this.testMessage.textContent = message;
-    this.testResult.style.display = 'block';
-    this.saveResult.style.display = 'none';
-
-    if (type !== 'loading') {
-      setTimeout(() => {
-        this.testResult.style.display = 'none';
-      }, 5000);
-    }
-  }
-
-  showSaveResult(type, message) {
-    this.saveResult.className = `save-result ${type}`;
-    this.saveMessage.textContent = message;
-    this.saveResult.style.display = 'block';
-    this.testResult.style.display = 'none';
-
-    setTimeout(() => {
-      this.saveResult.style.display = 'none';
-    }, 5000);
-  }
-
-  hideMessages() {
-    this.testResult.style.display = 'none';
-    this.saveResult.style.display = 'none';
+  /** Hide the status message. */
+  hideMessage() {
+    this.message.hidden = true;
   }
 }
 
-// Initialize options page when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-  new OptionsManager();
+  new OptionsManager().init().catch((error) => log.error('Options page failed to start: %s', error.message));
 });
