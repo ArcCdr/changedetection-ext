@@ -104,3 +104,48 @@ export function sortWatches(watches) {
       displayTitle(a).localeCompare(displayTitle(b)),
   );
 }
+
+/**
+ * Keep the watches matching a free-text query.
+ *
+ * @param {Watch[]} watches - The watches.
+ * @param {string} query - Text typed by the user.
+ * @returns {Watch[]} Watches whose displayTitle or url contains the trimmed query (case-insensitive); the input array when the query is blank.
+ */
+export function filterWatches(watches, query) {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return watches;
+  return watches.filter(
+    (watch) =>
+      displayTitle(watch).toLowerCase().includes(needle) ||
+      String(watch.url ?? '').toLowerCase().includes(needle),
+  );
+}
+
+/**
+ * Find the watch that monitors a page.
+ *
+ * @param {Watch[]} watches - The watches.
+ * @param {string} url - Page URL.
+ * @returns {Watch|undefined} The first watch whose url equals the page URL, ignoring the fragment and one trailing slash.
+ */
+export function findWatchByUrl(watches, url) {
+  const target = comparableUrl(url);
+  return watches.find((watch) => comparableUrl(watch.url) === target);
+}
+
+/**
+ * Normalize a URL for equality checks.
+ *
+ * @param {*} value - URL string.
+ * @returns {string} The parsed href without fragment and trailing slash, or String(value) when unparsable.
+ */
+function comparableUrl(value) {
+  try {
+    const url = new URL(String(value));
+    url.hash = '';
+    return url.href.replace(/\/$/, '');
+  } catch {
+    return String(value);
+  }
+}
