@@ -299,3 +299,28 @@ describe('cached list', () => {
     expect(document.getElementById('grantBtn').hidden).toBe(false);
   });
 });
+
+describe('grant access', () => {
+  test('granted: requests the origin and reloads', async () => {
+    const popup = await setup();
+    answer({ getWatches: { success: false, error: 'Access denied', errorKind: 'permission' } });
+    await popup.init();
+    answer({ getWatches: { success: true, data: { watches: [watch('a')], fetchedAt: Date.now() } } });
+    document.getElementById('grantBtn').click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(chrome.permissions.request).toHaveBeenCalledWith({ origins: ['http://192.168.1.10/*'] });
+    expect(rows()).toEqual(['a']);
+  });
+
+  test('refused: explains and stays on the error', async () => {
+    const popup = await setup();
+    answer({ getWatches: { success: false, error: 'Access denied', errorKind: 'permission' } });
+    await popup.init();
+    chrome.permissions.request.mockResolvedValueOnce(false);
+    await popup.grantAccess();
+    expect(visibleStates()).toEqual(['errorState']);
+    expect(document.getElementById('statusLine').textContent).toBe(
+      'Access not granted. The extension cannot reach your server without it.',
+    );
+  });
+});
