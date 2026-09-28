@@ -9,7 +9,7 @@ import { formatRelativeTime } from '../lib/format.js';
 import { createLogger } from '../lib/log.js';
 import { ACTIONS, sendMessage } from '../lib/messages.js';
 import { isConfigured, loadSettings, requestHostPermission } from '../lib/settings.js';
-import { filterWatches, isUnread, primaryUrl, sortWatches } from '../lib/watches.js';
+import { filterWatches, findWatchByUrl, isUnread, primaryUrl, sortWatches } from '../lib/watches.js';
 import { buildWatchItem } from './watch-item.js';
 
 const log = createLogger('popup');
@@ -37,6 +37,7 @@ export class PopupManager {
     this.settings = null;
     this.watches = [];
     this.fetchedAt = 0;
+    this.pageUrl = null;
     this.bindEvents();
   }
 
@@ -53,6 +54,7 @@ export class PopupManager {
     this.el.grantBtn.addEventListener('click', () => this.grantAccess());
     this.el.recheckAllBtn.addEventListener('click', () => this.recheckAll());
     this.el.filterInput.addEventListener('input', () => this.render());
+    this.el.watchPageBtn.addEventListener('click', () => this.watchPage());
   }
 
   /**
@@ -76,6 +78,7 @@ export class PopupManager {
     } else {
       this.showState('loading');
     }
+    await this.initPageBar();
     await this.refresh();
   }
 
@@ -148,6 +151,7 @@ export class PopupManager {
     this.el.emptyMessage.textContent =
       this.watches.length === 0 ? 'No watches yet.' : 'No watches match the filter.';
     this.el.markAllBtn.disabled = !this.watches.some(isUnread);
+    this.updatePageBar();
   }
 
   /**
@@ -241,6 +245,45 @@ export class PopupManager {
     const response = await sendMessage({ action: ACTIONS.RECHECK_ALL });
     this.el.recheckAllBtn.disabled = false;
     this.setStatus(response.success ? response.data.message : `Recheck failed: ${response.error}`);
+  }
+
+  /**
+   * Show "Watch this page" when the active tab is an http(s) page outside the server UI.
+   *
+   * @returns {Promise<void>} Resolves when the bar is set up.
+   */
+  async initPageBar() {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const url = tab?.url;
+    if (!url || !/^https?:\/\//i.test(url) || url.startsWith(this.settings.baseURL)) return;
+    this.pageUrl = url;
+    this.el.pageBar.hidden = false;
+    this.updatePageBar();
+  }
+
+  /** Toggle between the "Watch this page" button and the "already watched" note. */
+  updatePageBar() {
+    if (!this.pageUrl) return;
+    const watched = Boolean(findWatchByUrl(this.watches, this.pageUrl));
+    this.el.watchPageBtn.hidden = watched;
+    if (watched) this.el.pageStatus.textContent = '✓ This page is watched';
+  }
+
+  /**
+   * Create a watch for the active tab, then refresh the list.
+   *
+   * @returns {Promise<void>} Resolves when the watch was added and the list refreshed, or on failure.
+   */
+  async watchPage() {
+    this.el.watchPageBtn.disabled = true;
+    const response = await sendMessage({ action: ACTIONS.ADD_WATCH, url: this.pageUrl });
+    this.el.watchPageBtn.disabled = false;
+    if (!response.success) {
+      this.el.pageStatus.textContent = `Could not add: ${response.error}`;
+      return;
+    }
+    this.el.pageStatus.textContent = '✓ Added';
+    await this.refresh();
   }
 }
 
