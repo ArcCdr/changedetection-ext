@@ -1,5 +1,6 @@
 import {
   countUnread,
+  diffUrl,
   displayTitle,
   filterWatches,
   findWatchByUrl,
@@ -85,6 +86,16 @@ describe('siteUrl', () => {
     expect(siteUrl(watch({ open_link: 'DISABLED', link: '', url: 'https://ok' }))).toBe('https://ok');
     expect(siteUrl(watch({ url: 'javascript:alert(1)' }))).toBeNull();
     expect(siteUrl({ uuid: 'x' })).toBeNull();
+  });
+});
+
+describe('diffUrl', () => {
+  test('builds the server diff page of a watch', () => {
+    expect(diffUrl(BASE, 'u1')).toBe(`${BASE}/diff/u1`);
+  });
+
+  test('percent-encodes the UUID', () => {
+    expect(diffUrl(BASE, 'ab/c')).toBe(`${BASE}/diff/ab%2Fc`);
   });
 });
 
