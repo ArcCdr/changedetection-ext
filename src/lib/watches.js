@@ -56,3 +56,51 @@ export function isUnread(watch) {
 export function countUnread(watches) {
   return watches.filter(isUnread).length;
 }
+
+/**
+ * Title to show for a watch.
+ *
+ * @param {Watch} watch - The watch.
+ * @returns {string} title, else page_title, else url, else 'Untitled watch'.
+ */
+export function displayTitle(watch) {
+  return watch.title || watch.page_title || watch.url || 'Untitled watch';
+}
+
+/**
+ * URL of the monitored page.
+ *
+ * @param {Watch} watch - The watch.
+ * @returns {string|null} First of open_link, link, url that starts with http:// or https://, else null.
+ */
+export function siteUrl(watch) {
+  const candidates = [watch.open_link, watch.link, watch.url];
+  return candidates.find((value) => typeof value === 'string' && /^https?:\/\//i.test(value)) ?? null;
+}
+
+/**
+ * URL opened when the user clicks a watch row.
+ *
+ * @param {string} baseURL - Normalized server URL without trailing slash.
+ * @param {Watch} watch - The watch.
+ * @returns {string} The server diff page when the watch has changed; otherwise siteUrl(watch), or baseURL when that is null.
+ */
+export function primaryUrl(baseURL, watch) {
+  if (Number(watch.last_changed) > 0) return `${baseURL}/diff/${encodeURIComponent(watch.uuid)}`;
+  return siteUrl(watch) ?? baseURL;
+}
+
+/**
+ * Sort watches for display.
+ *
+ * @param {Watch[]} watches - The watches (not modified).
+ * @returns {Watch[]} New array: unread first, then newest last_changed first, then displayTitle A to Z.
+ */
+export function sortWatches(watches) {
+  return [...watches].sort(
+    (a, b) =>
+      Number(isUnread(b)) - Number(isUnread(a)) ||
+      (Number(b.last_changed) || 0) - (Number(a.last_changed) || 0) ||
+      displayTitle(a).localeCompare(displayTitle(b)),
+  );
+}
