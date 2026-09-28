@@ -7,10 +7,10 @@
  * synchronously at top level, as Manifest V3 requires.
  */
 import { addWatch, markAllViewed, openWatch, recheckAll, testConnection } from './lib/actions.js';
-import { clearWatchCache } from './lib/cache.js';
+import { clearWatchCache, readWatchCache } from './lib/cache.js';
 import { createLogger } from './lib/log.js';
 import { ACTIONS } from './lib/messages.js';
-import { notificationTarget } from './lib/notify.js';
+import { notificationClickTarget } from './lib/notify.js';
 import { refreshWatches } from './lib/refresh.js';
 import { REFRESH_ALARM, clearLegacyAlarms, ensureRefreshAlarm } from './lib/scheduler.js';
 import { loadSettings } from './lib/settings.js';
@@ -146,15 +146,29 @@ export async function onStorageChanged(changes, areaName) {
 }
 
 /**
- * chrome.notifications.onClicked handler: open the matching page and close the notification.
+ * chrome.notifications.onClicked handler: open the notified watch and mark it viewed (or open
+ * the server for the summary notification), then close the notification.
  *
  * @param {string} notificationId - ID of the clicked notification.
- * @returns {Promise<void>} Resolves when done.
+ * @returns {Promise<void>} Resolves when done; a failed mark-as-viewed is logged, never thrown.
  */
 export async function onNotificationClicked(notificationId) {
   const { baseURL } = await loadSettings();
-  if (!baseURL) return;
-  await chrome.tabs.create({ url: notificationTarget(notificationId, baseURL) });
+  if (!baseURL) {
+    log.warn('Ignored notification %s: server URL is not set', notificationId);
+    return;
+  }
+  const cache = await readWatchCache();
+  const target = notificationClickTarget(notificationId, baseURL, cache?.watches ?? []);
+  if (target.uuid) {
+    try {
+      await openWatch(target);
+    } catch (error) {
+      log.warn('Could not mark watch %s viewed from notification: %s', target.uuid, error.message);
+    }
+  } else {
+    await chrome.tabs.create({ url: target.url });
+  }
   await chrome.notifications.clear(notificationId);
   log.info('Opened notification %s', notificationId);
 }

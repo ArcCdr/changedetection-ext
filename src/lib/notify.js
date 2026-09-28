@@ -50,21 +50,6 @@ export async function notifyNewChanges(watches, enabled) {
 }
 
 /**
- * URL to open when a notification is clicked.
- *
- * @param {string} notificationId - ID passed to chrome.notifications.create.
- * @param {string} baseURL - Normalized server URL.
- * @returns {string} The diff page for a single-watch notification, otherwise baseURL.
- */
-export function notificationTarget(notificationId, baseURL) {
-  if (notificationId.startsWith(WATCH_NOTIFICATION_PREFIX)) {
-    const uuid = notificationId.slice(WATCH_NOTIFICATION_PREFIX.length);
-    return `${baseURL}/diff/${encodeURIComponent(uuid)}`;
-  }
-  return baseURL;
-}
-
-/**
  * What to open when a notification is clicked.
  *
  * @param {string} notificationId - ID passed to chrome.notifications.create.
