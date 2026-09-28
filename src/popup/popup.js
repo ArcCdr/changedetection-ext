@@ -49,6 +49,7 @@ export class PopupManager {
     this.el.watchesContainer.addEventListener('auxclick', (event) => this.onListClick(event));
     this.el.markAllBtn.addEventListener('click', () => this.markAllViewed());
     this.el.grantBtn.addEventListener('click', () => this.grantAccess());
+    this.el.recheckAllBtn.addEventListener('click', () => this.recheckAll());
   }
 
   /**
@@ -221,6 +222,18 @@ export class PopupManager {
     }
     this.showState('loading');
     await this.refresh();
+  }
+
+  /**
+   * Ask the server to recheck every watch.
+   *
+   * @returns {Promise<void>} Resolves when the service worker answered.
+   */
+  async recheckAll() {
+    this.el.recheckAllBtn.disabled = true;
+    const response = await sendMessage({ action: ACTIONS.RECHECK_ALL });
+    this.el.recheckAllBtn.disabled = false;
+    this.setStatus(response.success ? response.data.message : `Recheck failed: ${response.error}`);
   }
 }
 
