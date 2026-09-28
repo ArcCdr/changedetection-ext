@@ -6,10 +6,6 @@ import js from '@eslint/js';
 import jsdoc from 'eslint-plugin-jsdoc';
 import globals from 'globals';
 
-// Pre-refactor files, exempt from the JSDoc, no-console and no-unused-vars rules until they
-// are rewritten. Each rewrite task removes its own entry; the list must end up empty.
-const LEGACY_FILES = [];
-
 export default [
   { ignores: ['dist/', 'coverage/', 'node_modules/'] },
   js.configs.recommended,
@@ -33,11 +29,9 @@ export default [
   {
     ...jsdoc.configs['flat/recommended-error'],
     files: ['src/**/*.js', 'scripts/**/*.mjs'],
-    ignores: LEGACY_FILES,
   },
   {
     files: ['src/**/*.js', 'scripts/**/*.mjs'],
-    ignores: LEGACY_FILES,
     rules: {
       'jsdoc/require-file-overview': 'error',
       'jsdoc/require-description': 'error',
@@ -52,8 +46,7 @@ export default [
   },
   {
     files: ['src/**/*.js'],
-    ignores: [...LEGACY_FILES, 'src/lib/log.js'],
+    ignores: ['src/lib/log.js'],
     rules: { 'no-console': 'error' },
   },
-  ...(LEGACY_FILES.length > 0 ? [{ files: LEGACY_FILES, rules: { 'no-unused-vars': 'off' } }] : []),
 ];

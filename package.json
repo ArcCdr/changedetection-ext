@@ -8,7 +8,9 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "check": "npm run lint && npm run test:coverage",
+    "package": "npm run check && node scripts/build.mjs"
   },
   "keywords": [
     "browser-extension",
