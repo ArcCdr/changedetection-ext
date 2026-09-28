@@ -1,7 +1,13 @@
 import {
+  DEFAULT_REFRESH_MINUTES,
+  SETTINGS_KEYS,
+  hasHostPermission,
   hostPermissionPattern,
+  isConfigured,
   isValidRefreshInterval,
+  loadSettings,
   normalizeBaseUrl,
+  requestHostPermission,
   validateConnection,
   validateSettings,
 } from '../../src/lib/settings.js';
@@ -90,5 +96,60 @@ describe('hostPermissionPattern', () => {
   test('drops port and path', () => {
     expect(hostPermissionPattern('http://192.168.1.10:5000/cd')).toBe('http://192.168.1.10/*');
     expect(hostPermissionPattern('https://cd.example.com')).toBe('https://cd.example.com/*');
+  });
+});
+
+describe('loadSettings / isConfigured', () => {
+  test('applies defaults when nothing is stored', async () => {
+    expect(await loadSettings()).toEqual({
+      baseURL: '',
+      apiKey: '',
+      refreshInterval: DEFAULT_REFRESH_MINUTES,
+      notificationsEnabled: false,
+    });
+    expect(chrome.storage.sync.get).toHaveBeenCalledWith(SETTINGS_KEYS);
+  });
+
+  test('normalizes a legacy stored URL and keeps valid values', async () => {
+    await chrome.storage.sync.set({
+      baseURL: 'http://192.168.1.10:5000/',
+      apiKey: 'key',
+      refreshInterval: 10,
+      notificationsEnabled: true,
+    });
+    const settings = await loadSettings();
+    expect(settings).toEqual({
+      baseURL: 'http://192.168.1.10:5000',
+      apiKey: 'key',
+      refreshInterval: 10,
+      notificationsEnabled: true,
+    });
+    expect(isConfigured(settings)).toBe(true);
+  });
+
+  test('falls back for invalid stored values', async () => {
+    await chrome.storage.sync.set({ baseURL: 'javascript:x', apiKey: 42, refreshInterval: 0, notificationsEnabled: 'yes' });
+    const settings = await loadSettings();
+    expect(settings).toEqual({ baseURL: '', apiKey: '', refreshInterval: 5, notificationsEnabled: false });
+    expect(isConfigured(settings)).toBe(false);
+  });
+
+  test('isConfigured needs both URL and key', () => {
+    expect(isConfigured({ baseURL: 'http://h', apiKey: '' })).toBe(false);
+    expect(isConfigured({ baseURL: '', apiKey: 'k' })).toBe(false);
+  });
+});
+
+describe('host permission helpers', () => {
+  test('hasHostPermission asks chrome.permissions.contains for the origin pattern', async () => {
+    chrome.permissions.contains.mockResolvedValueOnce(false);
+    expect(await hasHostPermission('http://192.168.1.10:5000')).toBe(false);
+    expect(chrome.permissions.contains).toHaveBeenCalledWith({ origins: ['http://192.168.1.10/*'] });
+  });
+
+  test('requestHostPermission calls chrome.permissions.request synchronously', async () => {
+    const pending = requestHostPermission('http://192.168.1.10:5000');
+    expect(chrome.permissions.request).toHaveBeenCalledWith({ origins: ['http://192.168.1.10/*'] });
+    expect(await pending).toBe(true);
   });
 });
