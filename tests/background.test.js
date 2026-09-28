@@ -10,7 +10,7 @@ import {
   onStorageChanged,
   ready,
 } from '../src/background.js';
-import { CACHE_KEY, writeWatchCache } from '../src/lib/cache.js';
+import { CACHE_KEY, readWatchCache, writeWatchCache } from '../src/lib/cache.js';
 import { REFRESH_ALARM } from '../src/lib/scheduler.js';
 import { flushPromises } from './helpers/dom.js';
 import { hasLog } from './helpers/logs.js';
@@ -194,16 +194,54 @@ describe('lifecycle handlers', () => {
 });
 
 describe('onNotificationClicked', () => {
-  test('opens the diff page for a single-watch notification and clears it', async () => {
+  const CHANGED = { uuid: 'abc', url: 'https://site.example/page', last_changed: 100, viewed: false };
+
+  test('a single-watch notification opens the monitored page, marks the watch viewed and clears it', async () => {
     await configure();
+    await writeWatchCache([CHANGED], 1);
+    respond('OK');
     await onNotificationClicked('cdio-watch:abc');
-    expect(chrome.tabs.create).toHaveBeenCalledWith({ url: `${BASE}/diff/abc` });
+    expect(chrome.tabs.create).toHaveBeenCalledWith({ url: 'https://site.example/page', active: true });
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    expect(globalThis.fetch.mock.calls[0][0]).toBe(`${BASE}/api/v1/watch/abc`);
+    expect(globalThis.fetch.mock.calls[0][1].method).toBe('PUT');
+    expect((await readWatchCache()).watches[0].viewed).toBe(true);
+    expect(chrome.action.setBadgeText).toHaveBeenCalledWith({ text: '' });
     expect(chrome.notifications.clear).toHaveBeenCalledWith('cdio-watch:abc');
-    expect(hasLog('info', 'Opened notification cdio-watch:abc')).toBe(true);
+    expect(hasLog('info', '[cdio:actions] Opened watch abc and marked it viewed')).toBe(true);
+    expect(hasLog('info', '[cdio:background] Opened notification cdio-watch:abc')).toBe(true);
   });
 
-  test('does nothing when not configured', async () => {
+  test('a watch missing from the cache opens its diff page without any request', async () => {
+    await configure();
+    await onNotificationClicked('cdio-watch:gone');
+    expect(chrome.tabs.create).toHaveBeenCalledWith({ url: `${BASE}/diff/gone`, active: true });
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+    expect(chrome.notifications.clear).toHaveBeenCalledWith('cdio-watch:gone');
+    expect(hasLog('warn', 'Watch gone is not in the cache')).toBe(true);
+  });
+
+  test('a failed mark-as-viewed is logged and the notification still cleared', async () => {
+    await configure();
+    await writeWatchCache([CHANGED], 1);
+    respond('x', 500);
+    await expect(onNotificationClicked('cdio-watch:abc')).resolves.toBeUndefined();
+    expect(chrome.tabs.create).toHaveBeenCalledWith({ url: 'https://site.example/page', active: true });
+    expect(chrome.notifications.clear).toHaveBeenCalledWith('cdio-watch:abc');
+    expect(hasLog('warn', '[cdio:background] Could not mark watch abc viewed from notification: Server error (HTTP 500)')).toBe(true);
+  });
+
+  test('the summary notification opens the server without any request', async () => {
+    await configure();
+    await onNotificationClicked('cdio-changes');
+    expect(chrome.tabs.create).toHaveBeenCalledWith({ url: BASE });
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+    expect(chrome.notifications.clear).toHaveBeenCalledWith('cdio-changes');
+  });
+
+  test('does nothing but warn when not configured', async () => {
     await onNotificationClicked('cdio-changes');
     expect(chrome.tabs.create).not.toHaveBeenCalled();
+    expect(hasLog('warn', '[cdio:background] Ignored notification cdio-changes: server URL is not set')).toBe(true);
   });
 });

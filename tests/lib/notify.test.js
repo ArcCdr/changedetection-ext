@@ -3,7 +3,6 @@ import {
   SUMMARY_NOTIFICATION_ID,
   WATCH_NOTIFICATION_PREFIX,
   notificationClickTarget,
-  notificationTarget,
   notifyNewChanges,
 } from '../../src/lib/notify.js';
 import { hasLog } from '../helpers/logs.js';
@@ -80,16 +79,6 @@ describe('notifyNewChanges', () => {
       chrome.notifications = api;
     }
     expect(hasLog('warn', 'permission is missing')).toBe(true);
-  });
-});
-
-describe('notificationTarget', () => {
-  test('single-watch id opens the diff page', () => {
-    expect(notificationTarget(`${WATCH_NOTIFICATION_PREFIX}a/b`, 'http://h:5000')).toBe('http://h:5000/diff/a%2Fb');
-  });
-
-  test('summary id opens the server', () => {
-    expect(notificationTarget(SUMMARY_NOTIFICATION_ID, 'http://h:5000')).toBe('http://h:5000');
   });
 });
 
