@@ -1,402 +1,129 @@
-// Popup script for ChangeDetection.io extension
+/**
+ * @file Popup page controller: lists the user's watches and runs the actions offered on them.
+ *
+ * All server work goes through the service worker (lib/messages.js), so it completes even
+ * when the popup closes.
+ */
+import { formatRelativeTime } from '../lib/format.js';
+import { createLogger } from '../lib/log.js';
+import { ACTIONS, sendMessage } from '../lib/messages.js';
+import { isConfigured, loadSettings } from '../lib/settings.js';
+import { sortWatches } from '../lib/watches.js';
+import { buildWatchItem } from './watch-item.js';
 
-class PopupManager {
-  constructor() {
-    this.watchesContainer = document.getElementById('watchesContainer');
-    this.loadingState = document.getElementById('loadingState');
-    this.errorState = document.getElementById('errorState');
-    this.noConfigState = document.getElementById('noConfigState');
-    this.watchesList = document.getElementById('watchesList');
-    this.errorMessage = document.getElementById('errorMessage');
-    
-    this.initializeEventListeners();
-    this.loadWatches();
+const log = createLogger('popup');
+
+const ELEMENT_IDS = [
+  'titleLink', 'refreshBtn', 'settingsBtn', 'statusLine', 'loadingState', 'errorState', 'errorMessage',
+  'grantBtn', 'retryBtn', 'noConfigState', 'configureBtn', 'watchesList', 'pageBar', 'watchPageBtn',
+  'pageStatus', 'filterBar', 'filterInput', 'watchesContainer', 'emptyMessage', 'markAllBtn', 'recheckAllBtn',
+];
+
+const STATE_ELEMENTS = { loading: 'loadingState', error: 'errorState', noConfig: 'noConfigState', watches: 'watchesList' };
+
+/** Controller for popup.html. */
+export class PopupManager {
+  /**
+   * Look up the popup elements and wire their events.
+   *
+   * @param {Document} [doc] - Document holding popup.html; defaults to the global document.
+   */
+  constructor(doc = document) {
+    this.doc = doc;
+    this.el = Object.fromEntries(ELEMENT_IDS.map((id) => [id, doc.getElementById(id)]));
+    this.settings = null;
+    this.watches = [];
+    this.fetchedAt = 0;
+    this.bindEvents();
   }
 
-  initializeEventListeners() {
-    // Settings button
-    document.getElementById('settingsBtn').addEventListener('click', () => {
-      chrome.runtime.openOptionsPage();
-    });
-
-    // Configure button
-    document.getElementById('configureBtn').addEventListener('click', () => {
-      chrome.runtime.openOptionsPage();
-    });
-
-    // Retry button
-    document.getElementById('retryBtn').addEventListener('click', () => {
-      this.loadWatches();
-    });
-
-    // Refresh button
-    document.getElementById('refreshBtn').addEventListener('click', () => {
-      this.loadWatches();
-    });
-
-    // Mark all as watched button
-    document.getElementById('markAllBtn').addEventListener('click', () => {
-      this.markAllAsWatched();
-    });
+  /** Attach event listeners to buttons, the filter and the list. */
+  bindEvents() {
+    const openSettings = () => chrome.runtime.openOptionsPage();
+    this.el.settingsBtn.addEventListener('click', openSettings);
+    this.el.configureBtn.addEventListener('click', openSettings);
+    this.el.refreshBtn.addEventListener('click', () => this.refresh());
+    this.el.retryBtn.addEventListener('click', () => this.refresh());
   }
 
-  setTitleLink(baseURL) {
-    const titleLink = document.getElementById('titleLink');
-    if (titleLink && baseURL) {
-      titleLink.href = baseURL;
-      titleLink.target = '_blank'; // Open in new tab
+  /**
+   * Load settings, then fetch and show the watches.
+   *
+   * @returns {Promise<void>} Resolves when the first refresh finished.
+   */
+  async init() {
+    this.settings = await loadSettings();
+    if (!isConfigured(this.settings)) {
+      this.showState('noConfig');
+      return;
     }
-  }
-
-  showState(state) {
-    // Hide all states
-    this.loadingState.style.display = 'none';
-    this.errorState.style.display = 'none';
-    this.noConfigState.style.display = 'none';
-    this.watchesList.style.display = 'none';
-
-    // Show requested state
-    switch (state) {
-      case 'loading':
-        this.loadingState.style.display = 'flex';
-        break;
-      case 'error':
-        this.errorState.style.display = 'block';
-        break;
-      case 'noConfig':
-        this.noConfigState.style.display = 'block';
-        break;
-      case 'watches':
-        this.watchesList.style.display = 'block';
-        break;
-    }
-  }
-
-  async loadWatches() {
+    this.el.titleLink.href = this.settings.baseURL;
     this.showState('loading');
-
-    try {
-      // Check if settings are configured
-      const settings = await this.getSettings();
-      if (!settings.baseURL || !settings.apiKey) {
-        this.showState('noConfig');
-        return;
-      }
-
-      // Set up the title link
-      this.setTitleLink(settings.baseURL);
-
-      // Load watches from background script
-      const response = await this.sendMessage({ action: 'getWatches' });
-      
-      if (response.success) {
-        this.displayWatches(response.data);
-        this.showState('watches');
-      } else {
-        throw new Error(response.error || 'Failed to load watches');
-      }
-    } catch (error) {
-      console.error('Error loading watches:', error);
-      this.errorMessage.textContent = error.message;
-      this.showState('error');
-    }
+    await this.refresh();
   }
 
-  getSettings() {
-    return new Promise((resolve) => {
-      chrome.storage.sync.get(['baseURL', 'apiKey'], (result) => {
-        resolve(result);
-      });
-    });
+  /**
+   * Show exactly one of the four page states.
+   *
+   * @param {'loading'|'error'|'noConfig'|'watches'} state - State to show.
+   */
+  showState(state) {
+    for (const [name, id] of Object.entries(STATE_ELEMENTS)) this.el[id].hidden = name !== state;
   }
 
-  sendMessage(message) {
-    return new Promise((resolve) => {
-      chrome.runtime.sendMessage(message, (response) => {
-        resolve(response || { success: false, error: 'No response from background script' });
-      });
-    });
+  /**
+   * Set the one-line status text under the header.
+   *
+   * @param {string} text - Status text; '' clears it.
+   */
+  setStatus(text) {
+    this.el.statusLine.textContent = text;
   }
 
-  displayWatches(watches) {
-    this.watchesContainer.innerHTML = '';
+  /**
+   * Show the error state.
+   *
+   * @param {string} message - User-safe error message.
+   * @param {string} [kind] - ApiError kind; 'permission' reveals the Grant access button.
+   */
+  showError(message, kind) {
+    this.el.errorMessage.textContent = message;
+    this.el.grantBtn.hidden = kind !== 'permission';
+    this.setStatus('');
+    this.showState('error');
+  }
 
-    // Debug: log the data type and structure
-        // Display watches data
-
-    // Handle different data formats
-    if (!watches) {
-      this.watchesContainer.innerHTML = `
-        <div class="empty-state">
-          <p>No watch data received. Check console for details.</p>
-        </div>
-      `;
+  /**
+   * Fetch watches through the service worker and render them.
+   *
+   * @returns {Promise<void>} Resolves when the list or an error is shown.
+   */
+  async refresh() {
+    this.setStatus('Refreshing…');
+    const response = await sendMessage({ action: ACTIONS.GET_WATCHES });
+    if (response.success) {
+      this.watches = response.data.watches;
+      this.fetchedAt = response.data.fetchedAt;
+      this.render();
+      this.showState('watches');
+      this.setStatus(`Updated ${formatRelativeTime(Math.floor(this.fetchedAt / 1000))}`);
       return;
     }
-
-    // Ensure we have an array
-    let watchesArray;
-    if (Array.isArray(watches)) {
-      watchesArray = watches;
-    } else if (typeof watches === 'object') {
-      // Try to extract array from object
-      if (watches.watches && Array.isArray(watches.watches)) {
-        watchesArray = watches.watches;
-      } else {
-        // Convert object to array
-        watchesArray = Object.values(watches);
-      }
-    } else {
-      this.watchesContainer.innerHTML = `
-        <div class="empty-state">
-          <p>Invalid watch data format received. Expected array or object, got: ${typeof watches}</p>
-        </div>
-      `;
-      return;
-    }
-
-    if (watchesArray.length === 0) {
-      this.watchesContainer.innerHTML = `
-        <div class="empty-state">
-          <p>No watches found. Create some watches on your changedetection.io server.</p>
-        </div>
-      `;
-      return;
-    }
-
-    // Sort watches by last_changed (most recent first)
-    // Watches that were never changed (last_changed = 0) go to the bottom
-    watchesArray.sort((a, b) => {
-      const aChanged = a.last_changed || 0;
-      const bChanged = b.last_changed || 0;
-      
-      // If both are 0 (never changed), maintain original order
-      if (aChanged === 0 && bChanged === 0) return 0;
-      // If only a is 0, put it at the bottom
-      if (aChanged === 0) return 1;
-      // If only b is 0, put it at the bottom
-      if (bChanged === 0) return -1;
-      // Both have been changed, sort by most recent first
-      return bChanged - aChanged;
-    });
-
-    watchesArray.forEach(watch => {
-      const watchElement = this.createWatchElement(watch);
-      this.watchesContainer.appendChild(watchElement);
-    });
+    log.warn('Could not load watches: %s', response.error);
+    this.showError(response.error, response.errorKind);
   }
 
-  createWatchElement(watch) {
-    const isUnread = this.isWatchUnread(watch);
-    
-    const watchDiv = document.createElement('a');
-    watchDiv.className = `watch-item ${isUnread ? 'unread' : ''}`;
-    watchDiv.href = '#';
-    watchDiv.dataset.uuid = watch.uuid;
-    
-    // Use title or URL as fallback
-    const title = watch.title || watch.url || 'Untitled Watch';
-    
-    watchDiv.innerHTML = `
-      <div class="watch-title">${this.escapeHtml(title)}</div>
-      <div class="watch-status">
-        ${isUnread ? 'Unread' : 'Read'} • 
-        Last changed: ${this.formatDate(watch.last_changed)}
-      </div>
-    `;
-
-    watchDiv.addEventListener('click', async (e) => {
-      e.preventDefault();
-      await this.handleWatchClick(e, watch);
-    });
-
-    return watchDiv;
-  }
-
-  isWatchUnread(watch) {
-    // Check both "viewed" boolean field and compare last_viewed vs last_changed timestamps
-    // This provides more robust unread detection to match background script logic
-    
-    // Primary check: use "viewed" boolean field if available
-    if (typeof watch.viewed === 'boolean') {
-      return watch.viewed === false;
-    }
-    
-    // Fallback: compare timestamps - if last_viewed is less than last_changed, it's unread
-    // Handle cases where last_changed might be 0 (never changed) or missing
-    const lastChanged = watch.last_changed || 0;
-    const lastViewed = watch.last_viewed || 0;
-    
-    // If never changed, consider it read
-    if (lastChanged === 0) return false;
-    
-    // If last_viewed is 0 or less than last_changed, it's unread
-    return lastViewed === 0 || lastViewed < lastChanged;
-  }
-
-  async handleWatchClick(event, watch) {
-    const watchItem = event.target.closest('.watch-item');
-    if (!watchItem) return;
-
-    const uuid = watchItem.dataset.uuid;
-    if (!uuid) return;
-
-    // Open the watch URL in a new tab
-    if (watch.url) {
-      // Check if we have tabs permission
-      const hasPermission = await chrome.permissions.contains({ permissions: ['tabs'] });
-      
-      if (hasPermission) {
-        chrome.tabs.create({ url: watch.url });
-      } else {
-        // Request permission and then open tab
-        const granted = await chrome.permissions.request({ permissions: ['tabs'] });
-        if (granted) {
-          chrome.tabs.create({ url: watch.url });
-        } else {
-          // Fallback to window.open (less reliable but works)
-          window.open(watch.url, '_blank');
-        }
-      }
-    }
-
-    watchItem.classList.add('loading');
-
-    try {
-      const response = await chrome.runtime.sendMessage({
-        action: 'updateWatchViewed',
-        uuid: uuid
-      });
-
-      if (response.success) {
-        watchItem.classList.remove('unread');
-        this.updateBadge();
-      } else {
-        console.error('Failed to mark watch as viewed:', response.error);
-      }
-    } catch (error) {
-      console.error('Error updating watch:', error);
-    } finally {
-      watchItem.classList.remove('loading');
-    }
-  }
-
-  async markAllAsWatched() {
-    const markAllBtn = document.getElementById('markAllBtn');
-    
-    // Disable button during operation
-    markAllBtn.disabled = true;
-    markAllBtn.textContent = '...';
-
-    try {
-      const unreadItems = document.querySelectorAll('.watch-item.unread');
-      
-      if (unreadItems.length === 0) {
-        markAllBtn.textContent = '✓ All watched';
-        setTimeout(() => {
-          markAllBtn.textContent = '✓ Mark all as watched';
-          markAllBtn.disabled = false;
-        }, 1000);
-        return;
-      }
-
-      let successCount = 0;
-      
-      // Process each unread watch
-      for (const item of unreadItems) {
-        const uuid = item.dataset.uuid;
-        if (!uuid) continue;
-
-        try {
-          const response = await chrome.runtime.sendMessage({
-            action: 'updateWatchViewed',
-            uuid: uuid
-          });
-
-          if (response.success) {
-            item.classList.remove('unread');
-            successCount++;
-          }
-        } catch (error) {
-          console.error('Error marking watch as read:', uuid, error);
-        }
-      }
-
-      // Update badge if any were successful
-      if (successCount > 0) {
-        this.updateBadge();
-      }
-
-      // Show completion status
-      if (successCount === unreadItems.length) {
-        markAllBtn.textContent = `✓ Marked ${successCount} as watched`;
-      } else {
-        markAllBtn.textContent = `✓ Marked ${successCount}/${unreadItems.length}`;
-      }
-
-    } catch (error) {
-      console.error('Error in mark all as watched:', error);
-      markAllBtn.textContent = '✗ Error';
-    } finally {
-      // Reset button after 2 seconds
-      setTimeout(() => {
-        markAllBtn.textContent = '✓ Mark all as watched';
-        markAllBtn.disabled = false;
-      }, 2000);
-    }
-  }
-
-  formatDate(dateInput) {
-    if (!dateInput || dateInput === 0) return 'Never';
-    
-    try {
-      let date;
-      
-      // Handle Unix timestamp (number) vs ISO string
-      if (typeof dateInput === 'number') {
-        // Unix timestamp - convert to milliseconds
-        date = new Date(dateInput * 1000);
-      } else {
-        // ISO string or other format
-        date = new Date(dateInput);
-      }
-      
-      // Check if date is valid
-      if (isNaN(date.getTime())) return 'Invalid date';
-      
-      const now = new Date();
-      const diffMs = now - date;
-      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-      const diffDays = Math.floor(diffHours / 24);
-      
-      if (diffDays > 7) {
-        return date.toLocaleDateString();
-      } else if (diffDays > 0) {
-        return `${diffDays}d ago`;
-      } else if (diffHours > 0) {
-        return `${diffHours}h ago`;
-      } else {
-        const diffMinutes = Math.floor(diffMs / (1000 * 60));
-        return diffMinutes > 0 ? `${diffMinutes}m ago` : 'Just now';
-      }
-    } catch (error) {
-      return 'Unknown';
-    }
-  }
-
-  escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
-
-  updateBadge() {
-    // Tell background script to update badge
-    chrome.runtime.sendMessage({ action: 'updateBadge' });
+  /** Rebuild the list from this.watches in display order. */
+  render() {
+    const visible = sortWatches(this.watches);
+    this.el.watchesContainer.replaceChildren(
+      ...visible.map((watch) => buildWatchItem(this.doc, watch, this.settings.baseURL)),
+    );
+    this.el.emptyMessage.hidden = visible.length > 0;
+    this.el.emptyMessage.textContent = 'No watches yet.';
   }
 }
 
-// Initialize popup when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-  new PopupManager();
+  new PopupManager().init().catch((error) => log.error('Popup failed to start: %s', error.message));
 });
