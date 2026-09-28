@@ -137,3 +137,63 @@ describe('bootstrap', () => {
     expect(hasLog('error', '[cdio:popup] Popup failed to start: storage down')).toBe(true);
   });
 });
+
+describe('opening watches', () => {
+  /**
+   * Initialise with one unread and one never-changed watch.
+   *
+   * @returns {Promise<PopupManager>} Manager.
+   */
+  async function ready() {
+    const popup = await setup();
+    answer({
+      getWatches: {
+        success: true,
+        data: { watches: [watch('u', { last_changed: 100, viewed: false }), watch('n')], fetchedAt: Date.now() },
+      },
+      openWatch: { success: true },
+    });
+    await popup.init();
+    chrome.runtime.sendMessage.mockClear();
+    return popup;
+  }
+
+  test('click opens the diff page in the foreground and marks the row read', async () => {
+    const popup = await ready();
+    const main = document.querySelector('[data-uuid="u"] .watch-main');
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+    main.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+    expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+      action: 'openWatch', uuid: 'u', url: `${BASE}/diff/u`, lastChanged: 100, background: false,
+    });
+    expect(document.querySelector('[data-uuid="u"]').classList.contains('unread')).toBe(false);
+    expect(popup.watches.find((w) => w.uuid === 'u').viewed).toBe(true);
+  });
+
+  test('ctrl/cmd-click and middle-click open in the background', async () => {
+    await ready();
+    const main = () => document.querySelector('[data-uuid="n"] .watch-main');
+    main().dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: true }));
+    main().dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, metaKey: true }));
+    main().dispatchEvent(new MouseEvent('auxclick', { bubbles: true, cancelable: true, button: 1 }));
+    const calls = chrome.runtime.sendMessage.mock.calls.map(([request]) => request);
+    expect(calls).toHaveLength(3);
+    expect(calls.every((request) => request.background === true && request.url === 'https://n.example/')).toBe(true);
+  });
+
+  test('right-click (auxclick button 2) and clicks outside rows are ignored', async () => {
+    await ready();
+    document.querySelector('[data-uuid="n"] .watch-main')
+      .dispatchEvent(new MouseEvent('auxclick', { bubbles: true, cancelable: true, button: 2 }));
+    document.getElementById('watchesContainer').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
+  });
+
+  test('a failed openWatch is reported in the status line', async () => {
+    const popup = await ready();
+    answer({ openWatch: { success: false, error: 'Server error (HTTP 500)' } });
+    await popup.openWatch(popup.watches[0], false);
+    expect(document.getElementById('statusLine').textContent).toBe('Could not mark as viewed: Server error (HTTP 500)');
+  });
+});
