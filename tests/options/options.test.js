@@ -119,3 +119,51 @@ describe('bootstrap', () => {
     expect(hasLog('error', '[cdio:options] Options page failed to start: storage down')).toBe(true);
   });
 });
+
+describe('test connection', () => {
+  test('tests the unsaved values through the service worker without storing them', async () => {
+    const options = setup();
+    fill({ baseURL: `${BASE}/`, apiKey: 'k2' });
+    chrome.runtime.sendMessage.mockResolvedValueOnce({ success: true, data: { version: '0.50.12', watchCount: 7 } });
+    await options.testConnection();
+    expect(chrome.permissions.request).toHaveBeenCalledWith({ origins: ['http://192.168.1.10/*'] });
+    expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({ action: 'testConnection', baseURL: BASE, apiKey: 'k2' });
+    expect(chrome.storage.sync.set).not.toHaveBeenCalled();
+    expect(message()).toEqual({
+      hidden: false,
+      className: 'message message-success',
+      text: 'Connected: changedetection.io 0.50.12, 7 watches.',
+    });
+    expect(document.getElementById('testBtn').disabled).toBe(false);
+  });
+
+  test('ignores the refresh interval', async () => {
+    const options = setup();
+    fill({ refreshInterval: '0' });
+    chrome.runtime.sendMessage.mockResolvedValueOnce({ success: true, data: { version: '1', watchCount: 0 } });
+    await options.testConnection();
+    expect(message().className).toBe('message message-success');
+  });
+
+  test('shows validation, permission and server failures', async () => {
+    const options = setup();
+    fill({ apiKey: ' ' });
+    await options.testConnection();
+    expect(message().text).toBe('Enter your API key.');
+
+    fill();
+    chrome.permissions.request.mockResolvedValueOnce(false);
+    await options.testConnection();
+    expect(message().text).toBe(`Chrome needs access to ${BASE} to reach your server.`);
+    expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
+
+    chrome.runtime.sendMessage.mockResolvedValueOnce({ success: false, error: 'API key rejected (HTTP 403)' });
+    document.getElementById('testBtn').click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(message()).toEqual({
+      hidden: false,
+      className: 'message message-error',
+      text: 'Connection failed: API key rejected (HTTP 403)',
+    });
+  });
+});
