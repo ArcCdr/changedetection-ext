@@ -375,3 +375,57 @@ describe('filter', () => {
     expect(rows()).toEqual(['a']);
   });
 });
+
+describe('watch this page', () => {
+  test('non-http tabs and the server itself hide the bar', async () => {
+    for (const url of ['chrome://extensions/', `${BASE}/diff/x`, undefined]) {
+      const popup = await setup();
+      chrome.tabs.query.mockResolvedValue(url ? [{ url }] : []);
+      answer({ getWatches: { success: true, data: { watches: [], fetchedAt: Date.now() } } });
+      await popup.init();
+      expect(document.getElementById('pageBar').hidden).toBe(true);
+    }
+  });
+
+  test('an already watched page shows a note instead of the button', async () => {
+    const popup = await setup();
+    chrome.tabs.query.mockResolvedValue([{ url: 'https://a.example/#top' }]);
+    answer({ getWatches: { success: true, data: { watches: [watch('a')], fetchedAt: Date.now() } } });
+    await popup.init();
+    expect(chrome.tabs.query).toHaveBeenCalledWith({ active: true, currentWindow: true });
+    expect(document.getElementById('pageBar').hidden).toBe(false);
+    expect(document.getElementById('watchPageBtn').hidden).toBe(true);
+    expect(document.getElementById('pageStatus').textContent).toBe('✓ This page is watched');
+  });
+
+  test('adding a page sends addWatch and refreshes', async () => {
+    const popup = await setup();
+    chrome.tabs.query.mockResolvedValue([{ url: 'https://new.example/page' }]);
+    const lists = [[], [watch('n', { url: 'https://new.example/page' })]];
+    answer({
+      getWatches: () => ({ success: true, data: { watches: lists.shift(), fetchedAt: Date.now() } }),
+      addWatch: { success: true, data: { uuid: 'n' } },
+    });
+    await popup.init();
+    expect(document.getElementById('watchPageBtn').hidden).toBe(false);
+    document.getElementById('watchPageBtn').click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({ action: 'addWatch', url: 'https://new.example/page' });
+    expect(rows()).toEqual(['n']);
+    expect(document.getElementById('watchPageBtn').hidden).toBe(true);
+    expect(document.getElementById('pageStatus').textContent).toBe('✓ This page is watched');
+  });
+
+  test('a failed add is reported and the button re-enabled', async () => {
+    const popup = await setup();
+    chrome.tabs.query.mockResolvedValue([{ url: 'https://new.example/page' }]);
+    answer({
+      getWatches: { success: true, data: { watches: [], fetchedAt: Date.now() } },
+      addWatch: { success: false, error: 'Server error (HTTP 400)' },
+    });
+    await popup.init();
+    await popup.watchPage();
+    expect(document.getElementById('pageStatus').textContent).toBe('Could not add: Server error (HTTP 400)');
+    expect(document.getElementById('watchPageBtn').disabled).toBe(false);
+  });
+});
