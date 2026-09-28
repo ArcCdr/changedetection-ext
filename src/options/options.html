@@ -1,88 +1,55 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ChangeDetection.io Monitor - Settings</title>
+  <title>ChangeDetection.io Monitor — Settings</title>
   <link rel="stylesheet" href="options.css">
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>ChangeDetection.io Monitor Settings</h1>
-      <div class="version-info">
-        <span id="versionNumber">Version: Loading...</span>
-      </div>
+  <main class="page">
+    <header class="page-header">
+      <h1>ChangeDetection.io Monitor</h1>
+      <p id="versionNumber" class="version"></p>
     </header>
-    
-    <main>
-      <form id="settingsForm">
-        <div class="form-group">
-          <label for="baseURL">Server URL</label>
-          <input 
-            type="url" 
-            id="baseURL" 
-            name="baseURL" 
-            placeholder="http://localhost:5000 or https://yourdomain.com" 
-            required
-          >
-          <small>The base URL of your changedetection.io server (including http:// or https://)</small>
-        </div>
-        
-        <div class="form-group">
-          <label for="apiKey">API Key</label>
-          <input 
-            type="password" 
-            id="apiKey" 
-            name="apiKey" 
-            placeholder="Your API key" 
-            required
-          >
-          <small>Your changedetection.io API key (found in Settings > API)</small>
-        </div>
-        
-        <div class="form-group">
-          <label for="refreshInterval">Refresh Interval (minutes)</label>
-          <input 
-            type="number" 
-            id="refreshInterval" 
-            name="refreshInterval" 
-            min="1" 
-            max="1440"
-            value="5"
-          >
-          <small>How often to check for updates (1-1440 minutes)</small>
-        </div>
-        
-        <div class="form-actions">
-          <button type="button" id="testBtn" class="test-btn">Test Connection</button>
-          <button type="submit" class="save-btn">Save Settings</button>
-        </div>
-      </form>
-      
-      <div id="testResult" class="test-result" style="display: none;">
-        <div id="testMessage"></div>
+
+    <form id="settingsForm" novalidate>
+      <div class="field">
+        <label for="baseURL">Server URL</label>
+        <input id="baseURL" name="baseURL" type="url" placeholder="http://192.168.1.10:5000" autocomplete="url" required>
+        <small>The address you open changedetection.io at.</small>
       </div>
-      
-      <div id="saveResult" class="save-result" style="display: none;">
-        <div id="saveMessage"></div>
+      <div class="field">
+        <label for="apiKey">API key</label>
+        <input id="apiKey" name="apiKey" type="password" autocomplete="off" required>
+        <small>In changedetection.io: Settings → API.</small>
       </div>
-      
-      <div class="help-section">
-        <h2>Setup Instructions</h2>
-        <ol>
-          <li>Make sure your changedetection.io server is running and accessible</li>
-          <li>Log into your changedetection.io web interface</li>
-          <li>Go to Settings and enable the API</li>
-          <li>Copy your API key and paste it above</li>
-          <li>Enter your server URL (e.g., http://localhost:5000)</li>
-          <li>Click "Test Connection" to verify everything works</li>
-          <li>Click "Save Settings" to store your configuration</li>
-        </ol>
+      <div class="field">
+        <label for="refreshInterval">Refresh every (minutes)</label>
+        <input id="refreshInterval" name="refreshInterval" type="number" min="1" max="1440" step="1" value="5" required>
       </div>
-    </main>
-  </div>
-  
-  <script src="options.js"></script>
+      <div class="field field-check">
+        <input id="notificationsEnabled" name="notificationsEnabled" type="checkbox">
+        <label for="notificationsEnabled">Show a desktop notification when a watch changes</label>
+      </div>
+      <div class="actions">
+        <button id="testBtn" class="btn" type="button">Test connection</button>
+        <button id="saveBtn" class="btn btn-primary" type="submit">Save</button>
+      </div>
+      <p id="message" class="message" role="status" aria-live="polite" hidden></p>
+    </form>
+
+    <section class="help">
+      <h2>Setup</h2>
+      <ol>
+        <li>In changedetection.io, open <strong>Settings → API</strong> and copy the API key.</li>
+        <li>Enter the server URL and API key, then click <strong>Test connection</strong>.</li>
+        <li>Click <strong>Save</strong>. Chrome asks once for access to your server.</li>
+      </ol>
+      <p>Requires changedetection.io 0.50.12 or newer.</p>
+    </section>
+  </main>
+
+  <script type="module" src="options.js"></script>
 </body>
 </html>

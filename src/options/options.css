@@ -1,203 +1,199 @@
-body {
-  margin: 0;
-  padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #f8f9fa;
-  line-height: 1.6;
+:root {
+  color-scheme: light dark;
+  --bg: #f6f7fb;
+  --surface: #ffffff;
+  --text: #1f2330;
+  --muted: #5f6675;
+  --border: #dde1ea;
+  --accent: #5a67d8;
+  --accent-hover: #4c56c0;
+  --accent-contrast: #ffffff;
+  --focus: #7c8cff;
+  --success-bg: #e6f4ea;
+  --success-text: #1e6b34;
+  --error-bg: #fce8e6;
+  --error-text: #a50e0e;
+  --info-bg: #e8f0fe;
+  --info-text: #1a4fa0;
 }
 
-.container {
-  max-width: 800px;
-  margin: 0 auto;
-  background: white;
-  min-height: 100vh;
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15171e;
+    --surface: #1f222b;
+    --text: #e7e9ef;
+    --muted: #a3a9b7;
+    --border: #323644;
+    --accent: #7f8cff;
+    --accent-hover: #95a0ff;
+    --accent-contrast: #0f1117;
+    --focus: #a5b0ff;
+    --success-bg: #1d3526;
+    --success-text: #8fdca5;
+    --error-bg: #3d1f1f;
+    --error-text: #ffaaa3;
+    --info-bg: #1c2a44;
+    --info-text: #a9c5ff;
+  }
 }
 
-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 30px;
-  text-align: center;
+[hidden] {
+  display: none !important;
 }
 
-header h1 {
-  margin: 0;
-  font-size: 28px;
-  font-weight: 600;
-}
-
-.version-info {
-  margin-top: 10px;
-  opacity: 0.8;
-  font-size: 14px;
-}
-
-main {
-  padding: 40px;
-}
-
-.form-group {
-  margin-bottom: 25px;
-}
-
-label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 600;
-  color: #333;
-}
-
-input[type="url"],
-input[type="password"] {
-  width: 100%;
-  padding: 12px;
-  border: 2px solid #e1e8ed;
-  border-radius: 6px;
-  font-size: 14px;
-  transition: border-color 0.2s ease;
+* {
   box-sizing: border-box;
 }
 
-input[type="url"]:focus,
-input[type="password"]:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
-small {
-  display: block;
-  margin-top: 5px;
-  color: #666;
-  font-size: 12px;
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 
-.form-actions {
+.page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+.page-header {
+  margin-bottom: 24px;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.version {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+form {
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.field {
   display: flex;
-  gap: 15px;
-  margin-top: 30px;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 18px;
 }
 
-.test-btn,
-.save-btn {
-  padding: 12px 24px;
-  border: none;
+.field label {
+  font-weight: 600;
+}
+
+.field input[type='url'],
+.field input[type='password'],
+.field input[type='number'] {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
   border-radius: 6px;
-  font-size: 14px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.field input:focus {
+  border-color: var(--accent);
+}
+
+.field small {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.field-check {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.field-check label {
+  font-weight: 400;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+}
+
+.btn {
+  padding: 10px 18px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
 }
 
-.test-btn {
-  background: #f8f9fa;
-  color: #495057;
-  border: 2px solid #dee2e6;
+.btn:hover:not(:disabled) {
+  border-color: var(--accent);
 }
 
-.test-btn:hover {
-  background: #e9ecef;
-  border-color: #adb5bd;
-}
-
-.save-btn {
-  background: #667eea;
-  color: white;
-  flex: 1;
-}
-
-.save-btn:hover {
-  background: #5a6fd8;
-}
-
-.test-btn:disabled,
-.save-btn:disabled {
-  opacity: 0.6;
+.btn:disabled {
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
-.test-result,
-.save-result {
-  margin-top: 20px;
-  padding: 15px;
+.btn-primary {
+  flex: 1;
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.message {
+  margin: 16px 0 0;
+  padding: 10px 12px;
   border-radius: 6px;
-  font-size: 14px;
+  overflow-wrap: anywhere;
 }
 
-.test-result.success,
-.save-result.success {
-  background: #d4edda;
-  color: #155724;
-  border: 1px solid #c3e6cb;
+.message-success {
+  background: var(--success-bg);
+  color: var(--success-text);
 }
 
-.test-result.error,
-.save-result.error {
-  background: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
+.message-error {
+  background: var(--error-bg);
+  color: var(--error-text);
 }
 
-.test-result.loading {
-  background: #d1ecf1;
-  color: #0c5460;
-  border: 1px solid #bee5eb;
+.message-info {
+  background: var(--info-bg);
+  color: var(--info-text);
 }
 
-.help-section {
-  margin-top: 50px;
-  padding-top: 30px;
-  border-top: 2px solid #e9ecef;
+.help {
+  margin-top: 32px;
+  color: var(--muted);
 }
 
-.help-section h2 {
-  color: #495057;
-  margin-bottom: 20px;
+.help h2 {
+  color: var(--text);
+  font-size: 16px;
 }
 
-.help-section h3 {
-  color: #6c757d;
-  margin-top: 30px;
-  margin-bottom: 15px;
-}
-
-.help-section ol {
+.help ol {
   padding-left: 20px;
-}
-
-.help-section li {
-  margin-bottom: 8px;
-  color: #495057;
-}
-
-.help-section p {
-  color: #6c757d;
-  margin-bottom: 15px;
-}
-
-code {
-  background: #f8f9fa;
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: 12px;
-}
-
-/* Loading animation */
-.loading::after {
-  content: '';
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  margin-left: 8px;
-  border: 2px solid #0c5460;
-  border-radius: 50%;
-  border-top-color: transparent;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
