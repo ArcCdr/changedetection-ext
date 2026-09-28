@@ -1,4 +1,17 @@
-import { handleMessage } from '../src/background.js';
+import {
+  handleMessage,
+  initialize,
+  onAlarm,
+  onIdleStateChanged,
+  onInstalled,
+  onNotificationClicked,
+  onPermissionsAdded,
+  onStartup,
+  onStorageChanged,
+  ready,
+} from '../src/background.js';
+import { CACHE_KEY, writeWatchCache } from '../src/lib/cache.js';
+import { REFRESH_ALARM } from '../src/lib/scheduler.js';
 import { flushPromises } from './helpers/dom.js';
 import { hasLog } from './helpers/logs.js';
 
@@ -75,5 +88,122 @@ describe('handleMessage', () => {
 
   test('a missing request is an unknown action', async () => {
     expect(await handleMessage(undefined)).toEqual({ success: false, error: 'Unknown action: undefined' });
+  });
+});
+
+describe('start-up', () => {
+  test('registers every lifecycle listener and schedules the refresh alarm', async () => {
+    await ready;
+    expect(chrome.runtime.onInstalled.hasListener(onInstalled)).toBe(true);
+    expect(chrome.runtime.onStartup.hasListener(onStartup)).toBe(true);
+    expect(chrome.alarms.onAlarm.hasListener(onAlarm)).toBe(true);
+    expect(chrome.idle.onStateChanged.hasListener(onIdleStateChanged)).toBe(true);
+    expect(chrome.storage.onChanged.hasListener(onStorageChanged)).toBe(true);
+    expect(chrome.permissions.onAdded.hasListener(onPermissionsAdded)).toBe(true);
+    expect(chrome.notifications.onClicked.hasListener(onNotificationClicked)).toBe(true);
+  });
+
+  test('initialize schedules the alarm from the saved interval', async () => {
+    await chrome.storage.sync.set({ refreshInterval: 20 });
+    await initialize();
+    expect(await chrome.alarms.get(REFRESH_ALARM)).toMatchObject({ periodInMinutes: 20 });
+  });
+
+  test('initialize logs instead of throwing when scheduling fails', async () => {
+    chrome.alarms.get.mockRejectedValueOnce(new Error('alarms unavailable'));
+    await initialize();
+    expect(hasLog('error', '[cdio:background] Could not schedule refresh: alarms unavailable')).toBe(true);
+  });
+});
+
+describe('lifecycle handlers', () => {
+  test('onInstalled(install) clears legacy alarms, schedules, opens options and refreshes', async () => {
+    await onInstalled({ reason: 'install' });
+    expect(chrome.alarms.clear).toHaveBeenCalledWith('updateBadge');
+    expect(chrome.alarms.clear).toHaveBeenCalledWith('alarmWatchdog');
+    expect(await chrome.alarms.get(REFRESH_ALARM)).toMatchObject({ periodInMinutes: 5 });
+    expect(chrome.runtime.openOptionsPage).toHaveBeenCalled();
+    expect(hasLog('info', '[cdio:background] Extension install: version 0.0.0-test')).toBe(true);
+  });
+
+  test('onInstalled(update) does not open options and swallows refresh errors', async () => {
+    await configure();
+    respond('x', 500);
+    await onInstalled({ reason: 'update' });
+    expect(chrome.runtime.openOptionsPage).not.toHaveBeenCalled();
+    expect(hasLog('warn', 'Refresh failed (update)')).toBe(true);
+  });
+
+  test('onStartup schedules and refreshes', async () => {
+    await configure();
+    respond({});
+    await onStartup();
+    expect(await chrome.alarms.get(REFRESH_ALARM)).toMatchObject({ periodInMinutes: 5 });
+    expect(hasLog('info', 'Refreshed watches (startup)')).toBe(true);
+  });
+
+  test('onAlarm refreshes only for the refresh alarm', async () => {
+    await configure();
+    respond({});
+    await onAlarm({ name: 'other' });
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+    await onAlarm({ name: REFRESH_ALARM });
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  test('onIdleStateChanged refreshes only when active', async () => {
+    await configure();
+    respond({});
+    await onIdleStateChanged('idle');
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+    await onIdleStateChanged('active');
+    expect(hasLog('info', 'Refreshed watches (wake)')).toBe(true);
+  });
+
+  test('onStorageChanged reschedules on interval change', async () => {
+    await chrome.storage.sync.set({ refreshInterval: 30 });
+    await onStorageChanged({ refreshInterval: { newValue: 30 } }, 'sync');
+    expect(await chrome.alarms.get(REFRESH_ALARM)).toMatchObject({ periodInMinutes: 30 });
+  });
+
+  test('onStorageChanged clears the cache and refreshes on server change', async () => {
+    await configure();
+    await writeWatchCache([{ uuid: 'old' }], 1);
+    respond({});
+    await onStorageChanged({ baseURL: { newValue: BASE } }, 'sync');
+    expect(chrome.storage.session.remove).toHaveBeenCalledWith(CACHE_KEY);
+    expect(hasLog('info', 'Refreshed watches (settings)')).toBe(true);
+  });
+
+  test('onStorageChanged ignores other areas', async () => {
+    await onStorageChanged({ baseURL: { newValue: BASE } }, 'local');
+    expect(chrome.storage.session.remove).not.toHaveBeenCalled();
+  });
+
+  test('onPermissionsAdded refreshes when origins were granted', async () => {
+    await configure();
+    respond({});
+    await onPermissionsAdded({ permissions: [], origins: ['http://192.168.1.10/*'] });
+    expect(hasLog('info', 'Refreshed watches (permission)')).toBe(true);
+  });
+
+  test('onPermissionsAdded with only notifications does not refresh', async () => {
+    await onPermissionsAdded({ permissions: ['notifications'], origins: [] });
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe('onNotificationClicked', () => {
+  test('opens the diff page for a single-watch notification and clears it', async () => {
+    await configure();
+    await onNotificationClicked('cdio-watch:abc');
+    expect(chrome.tabs.create).toHaveBeenCalledWith({ url: `${BASE}/diff/abc` });
+    expect(chrome.notifications.clear).toHaveBeenCalledWith('cdio-watch:abc');
+    expect(hasLog('info', 'Opened notification cdio-watch:abc')).toBe(true);
+  });
+
+  test('does nothing when not configured', async () => {
+    await onNotificationClicked('cdio-changes');
+    expect(chrome.tabs.create).not.toHaveBeenCalled();
   });
 });
