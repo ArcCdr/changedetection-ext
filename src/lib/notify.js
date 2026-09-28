@@ -6,7 +6,7 @@
  * announced again only after it was viewed and then changed again.
  */
 import { createLogger } from './log.js';
-import { displayTitle, isUnread } from './watches.js';
+import { diffUrl, displayTitle, isUnread, primaryUrl } from './watches.js';
 
 const log = createLogger('notify');
 
@@ -62,4 +62,25 @@ export function notificationTarget(notificationId, baseURL) {
     return `${baseURL}/diff/${encodeURIComponent(uuid)}`;
   }
   return baseURL;
+}
+
+/**
+ * What to open when a notification is clicked.
+ *
+ * @param {string} notificationId - ID passed to chrome.notifications.create.
+ * @param {string} baseURL - Normalized server URL.
+ * @param {import('./watches.js').Watch[]} watches - Cached watches; [] when there is no cache.
+ * @returns {{url: string, uuid?: string, lastChanged?: number}} For a single-watch notification, an openWatch
+ *   request: the watch's primaryUrl and last_changed, or its diff page and 0 when the watch is not in `watches`.
+ *   For the summary notification, `{url: baseURL}`.
+ */
+export function notificationClickTarget(notificationId, baseURL, watches) {
+  if (!notificationId.startsWith(WATCH_NOTIFICATION_PREFIX)) return { url: baseURL };
+  const uuid = notificationId.slice(WATCH_NOTIFICATION_PREFIX.length);
+  const watch = watches.find((candidate) => candidate.uuid === uuid);
+  if (!watch) {
+    log.warn('Watch %s is not in the cache; opening its diff page without marking it viewed', uuid);
+    return { uuid, url: diffUrl(baseURL, uuid), lastChanged: 0 };
+  }
+  return { uuid, url: primaryUrl(baseURL, watch), lastChanged: Number(watch.last_changed) || 0 };
 }
