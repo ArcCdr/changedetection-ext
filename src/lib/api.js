@@ -97,4 +97,53 @@ export class ChangeDetectionClient {
       throw new ApiError('Server sent an invalid response (not JSON)', { kind: 'invalid_response', status: response.status });
     }
   }
+
+  /**
+   * Fetch every watch.
+   *
+   * @returns {Promise<object>} Raw response: an object keyed by watch UUID.
+   */
+  listWatches() {
+    return this.request('/api/v1/watch');
+  }
+
+  /**
+   * Mark one watch viewed by setting its last_viewed timestamp.
+   *
+   * @param {string} uuid - Watch UUID.
+   * @param {number} [lastChanged] - The watch's last_changed; last_viewed is max(now, lastChanged) to absorb clock skew.
+   * @returns {Promise<void>} Resolves when the server accepted the update.
+   */
+  async markViewed(uuid, lastChanged = 0) {
+    const lastViewed = Math.max(Math.floor(Date.now() / 1000), Number(lastChanged) || 0);
+    await this.request(`/api/v1/watch/${encodeURIComponent(uuid)}`, { method: 'PUT', body: { last_viewed: lastViewed } });
+  }
+
+  /**
+   * Fetch server information (cheap; used by the connection test).
+   *
+   * @returns {Promise<{version: string, watch_count: number}>} Server version and watch count, among other fields.
+   */
+  systemInfo() {
+    return this.request('/api/v1/systeminfo');
+  }
+
+  /**
+   * Create a watch for a page.
+   *
+   * @param {string} url - Page URL to monitor.
+   * @returns {Promise<{uuid: string}>} UUID of the new watch.
+   */
+  createWatch(url) {
+    return this.request('/api/v1/watch', { method: 'POST', body: { url } });
+  }
+
+  /**
+   * Queue a recheck of every watch.
+   *
+   * @returns {Promise<{status: string}>} Server status message, e.g. 'OK, queued 12 watches for rechecking'.
+   */
+  recheckAll() {
+    return this.request('/api/v1/watch?recheck_all=1');
+  }
 }
