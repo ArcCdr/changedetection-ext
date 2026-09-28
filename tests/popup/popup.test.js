@@ -1,3 +1,4 @@
+import { writeWatchCache } from '../../src/lib/cache.js';
 import { PopupManager } from '../../src/popup/popup.js';
 import { loadHtml } from '../helpers/dom.js';
 import { hasLog } from '../helpers/logs.js';
@@ -254,5 +255,47 @@ describe('mark all viewed', () => {
     answer({ markAllViewed: { success: false, error: 'boom' } });
     await popup.markAllViewed();
     expect(document.getElementById('statusLine').textContent).toBe('Could not mark watches viewed: boom');
+  });
+});
+
+describe('cached list', () => {
+  test('cached watches render before the refresh and stay on refresh failure', async () => {
+    const popup = await setup();
+    await writeWatchCache([watch('cached')], Date.now() - 5 * 60 * 1000);
+    let seenBeforeRefresh = null;
+    answer({
+      getWatches: () => {
+        seenBeforeRefresh = rows();
+        return { success: false, error: 'Server error (HTTP 500)', errorKind: 'http' };
+      },
+    });
+    await popup.init();
+    expect(seenBeforeRefresh).toEqual(['cached']);
+    expect(visibleStates()).toEqual(['watchesList']);
+    expect(document.getElementById('statusLine').textContent).toBe(
+      'Update failed: Server error (HTTP 500) (showing results from 5m ago)',
+    );
+  });
+
+  test('without a cache the loading state shows until the refresh answers', async () => {
+    const popup = await setup();
+    let statesDuringRefresh = null;
+    answer({
+      getWatches: () => {
+        statesDuringRefresh = visibleStates();
+        return { success: true, data: { watches: [], fetchedAt: Date.now() } };
+      },
+    });
+    await popup.init();
+    expect(statesDuringRefresh).toEqual(['loadingState']);
+  });
+
+  test('permission errors show Grant access even with a cached list', async () => {
+    const popup = await setup();
+    await writeWatchCache([watch('cached')], Date.now());
+    answer({ getWatches: { success: false, error: 'Access to x is not granted', errorKind: 'permission' } });
+    await popup.init();
+    expect(visibleStates()).toEqual(['errorState']);
+    expect(document.getElementById('grantBtn').hidden).toBe(false);
   });
 });
