@@ -8,7 +8,7 @@ const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'))
 describe('manifest.json', () => {
   test('is Manifest V3 with the same version as package.json', () => {
     expect(manifest.manifest_version).toBe(3);
-    expect(manifest.version).toBe('1.1.0');
+    expect(manifest.version).toBe('1.1.1');
     expect(pkg.version).toBe(manifest.version);
     expect(manifest.minimum_chrome_version).toBe('120');
   });
