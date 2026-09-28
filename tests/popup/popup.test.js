@@ -324,3 +324,18 @@ describe('grant access', () => {
     );
   });
 });
+
+describe('recheck all', () => {
+  test('shows the server message, or the failure', async () => {
+    const popup = await setup();
+    answer({ recheckAll: { success: true, data: { message: 'OK, queued 3 watches for rechecking' } } });
+    document.getElementById('recheckAllBtn').click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({ action: 'recheckAll' });
+    expect(document.getElementById('statusLine').textContent).toBe('OK, queued 3 watches for rechecking');
+    expect(document.getElementById('recheckAllBtn').disabled).toBe(false);
+    answer({ recheckAll: { success: false, error: 'API key rejected (HTTP 403)' } });
+    await popup.recheckAll();
+    expect(document.getElementById('statusLine').textContent).toBe('Recheck failed: API key rejected (HTTP 403)');
+  });
+});
