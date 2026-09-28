@@ -8,7 +8,7 @@ import { formatRelativeTime } from '../lib/format.js';
 import { createLogger } from '../lib/log.js';
 import { ACTIONS, sendMessage } from '../lib/messages.js';
 import { isConfigured, loadSettings } from '../lib/settings.js';
-import { sortWatches } from '../lib/watches.js';
+import { isUnread, primaryUrl, sortWatches } from '../lib/watches.js';
 import { buildWatchItem } from './watch-item.js';
 
 const log = createLogger('popup');
@@ -44,6 +44,8 @@ export class PopupManager {
     this.el.configureBtn.addEventListener('click', openSettings);
     this.el.refreshBtn.addEventListener('click', () => this.refresh());
     this.el.retryBtn.addEventListener('click', () => this.refresh());
+    this.el.watchesContainer.addEventListener('click', (event) => this.onListClick(event));
+    this.el.watchesContainer.addEventListener('auxclick', (event) => this.onListClick(event));
   }
 
   /**
@@ -121,6 +123,46 @@ export class PopupManager {
     );
     this.el.emptyMessage.hidden = visible.length > 0;
     this.el.emptyMessage.textContent = 'No watches yet.';
+  }
+
+  /**
+   * Handle click and middle-click on a watch row.
+   *
+   * @param {MouseEvent} event - click or auxclick event from the list.
+   * @returns {Promise<void>|undefined} The openWatch promise when a row was activated.
+   */
+  onListClick(event) {
+    const main = event.target.closest('.watch-main');
+    if (!main) return undefined;
+    if (event.type === 'auxclick' && event.button !== 1) return undefined;
+    event.preventDefault();
+    const watch = this.watches.find((candidate) => candidate.uuid === main.closest('.watch-item').dataset.uuid);
+    if (!watch) return undefined;
+    const background = event.type === 'auxclick' || event.ctrlKey || event.metaKey;
+    return this.openWatch(watch, background);
+  }
+
+  /**
+   * Open a watch (diff page when changed) and mark it viewed.
+   *
+   * @param {import('../lib/watches.js').Watch} watch - The watch.
+   * @param {boolean} background - Open the tab in the background and keep the popup open.
+   * @returns {Promise<void>} Resolves when the service worker answered.
+   */
+  async openWatch(watch, background) {
+    const request = {
+      action: ACTIONS.OPEN_WATCH,
+      uuid: watch.uuid,
+      url: primaryUrl(this.settings.baseURL, watch),
+      lastChanged: Number(watch.last_changed) || 0,
+      background,
+    };
+    if (isUnread(watch)) {
+      watch.viewed = true;
+      this.render();
+    }
+    const response = await sendMessage(request);
+    if (!response.success) this.setStatus(`Could not mark as viewed: ${response.error}`);
   }
 }
 
