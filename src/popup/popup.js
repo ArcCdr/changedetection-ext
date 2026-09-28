@@ -46,6 +46,7 @@ export class PopupManager {
     this.el.retryBtn.addEventListener('click', () => this.refresh());
     this.el.watchesContainer.addEventListener('click', (event) => this.onListClick(event));
     this.el.watchesContainer.addEventListener('auxclick', (event) => this.onListClick(event));
+    this.el.markAllBtn.addEventListener('click', () => this.markAllViewed());
   }
 
   /**
@@ -123,6 +124,7 @@ export class PopupManager {
     );
     this.el.emptyMessage.hidden = visible.length > 0;
     this.el.emptyMessage.textContent = 'No watches yet.';
+    this.el.markAllBtn.disabled = !this.watches.some(isUnread);
   }
 
   /**
@@ -163,6 +165,32 @@ export class PopupManager {
     }
     const response = await sendMessage(request);
     if (!response.success) this.setStatus(`Could not mark as viewed: ${response.error}`);
+  }
+
+  /**
+   * Mark every unread watch viewed.
+   *
+   * @returns {Promise<void>} Resolves when the service worker answered.
+   */
+  async markAllViewed() {
+    const unread = this.watches.filter(isUnread);
+    if (unread.length === 0) return;
+    this.el.markAllBtn.disabled = true;
+    const items = unread.map((watch) => ({ uuid: watch.uuid, lastChanged: Number(watch.last_changed) || 0 }));
+    const response = await sendMessage({ action: ACTIONS.MARK_ALL_VIEWED, items });
+    if (!response.success) {
+      this.setStatus(`Could not mark watches viewed: ${response.error}`);
+      this.render();
+      return;
+    }
+    const { markedUuids, failed } = response.data;
+    for (const watch of this.watches) if (markedUuids.includes(watch.uuid)) watch.viewed = true;
+    this.render();
+    this.setStatus(
+      failed > 0
+        ? `Marked ${markedUuids.length} of ${items.length} viewed; ${failed} failed`
+        : `Marked ${markedUuids.length} viewed`,
+    );
   }
 }
 
