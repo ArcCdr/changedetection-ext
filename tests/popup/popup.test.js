@@ -197,3 +197,62 @@ describe('opening watches', () => {
     expect(document.getElementById('statusLine').textContent).toBe('Could not mark as viewed: Server error (HTTP 500)');
   });
 });
+
+describe('mark all viewed', () => {
+  test('the button is enabled only while something is unread', async () => {
+    const popup = await setup();
+    answer({ getWatches: { success: true, data: { watches: [watch('a')], fetchedAt: Date.now() } } });
+    await popup.init();
+    expect(document.getElementById('markAllBtn').disabled).toBe(true);
+    answer({ getWatches: { success: true, data: { watches: [watch('b', { last_changed: 5, viewed: false })], fetchedAt: Date.now() } } });
+    await popup.refresh();
+    expect(document.getElementById('markAllBtn').disabled).toBe(false);
+  });
+
+  test('sends every unread watch once and marks the successes', async () => {
+    const popup = await setup();
+    const watches = [watch('a', { last_changed: 10, viewed: false }), watch('b', { last_changed: 20, viewed: false }), watch('c')];
+    answer({
+      getWatches: { success: true, data: { watches, fetchedAt: Date.now() } },
+      markAllViewed: { success: true, data: { markedUuids: ['a'], failed: 1 } },
+    });
+    await popup.init();
+    chrome.runtime.sendMessage.mockClear();
+    document.getElementById('markAllBtn').click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(chrome.runtime.sendMessage).toHaveBeenCalledTimes(1);
+    expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+      action: 'markAllViewed',
+      items: [{ uuid: 'a', lastChanged: 10 }, { uuid: 'b', lastChanged: 20 }],
+    });
+    expect(document.querySelector('[data-uuid="a"]').classList.contains('unread')).toBe(false);
+    expect(document.querySelector('[data-uuid="b"]').classList.contains('unread')).toBe(true);
+    expect(document.getElementById('statusLine').textContent).toBe('Marked 1 of 2 viewed; 1 failed');
+  });
+
+  test('all succeed', async () => {
+    const popup = await setup();
+    answer({
+      getWatches: { success: true, data: { watches: [watch('a', { last_changed: 10, viewed: false })], fetchedAt: Date.now() } },
+      markAllViewed: { success: true, data: { markedUuids: ['a'], failed: 0 } },
+    });
+    await popup.init();
+    await popup.markAllViewed();
+    expect(document.getElementById('statusLine').textContent).toBe('Marked 1 viewed');
+    expect(document.getElementById('markAllBtn').disabled).toBe(true);
+  });
+
+  test('nothing unread sends nothing; failure is reported', async () => {
+    const popup = await setup();
+    answer({ getWatches: { success: true, data: { watches: [watch('a')], fetchedAt: Date.now() } } });
+    await popup.init();
+    chrome.runtime.sendMessage.mockClear();
+    await popup.markAllViewed();
+    expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
+
+    popup.watches = [watch('x', { last_changed: 5, viewed: false })];
+    answer({ markAllViewed: { success: false, error: 'boom' } });
+    await popup.markAllViewed();
+    expect(document.getElementById('statusLine').textContent).toBe('Could not mark watches viewed: boom');
+  });
+});
