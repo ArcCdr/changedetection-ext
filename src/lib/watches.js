@@ -79,6 +79,17 @@ export function siteUrl(watch) {
 }
 
 /**
+ * URL of a watch's diff page on the server.
+ *
+ * @param {string} baseURL - Normalized server URL without trailing slash.
+ * @param {string} uuid - Watch UUID.
+ * @returns {string} `${baseURL}/diff/<uuid>`, with the UUID percent-encoded.
+ */
+export function diffUrl(baseURL, uuid) {
+  return `${baseURL}/diff/${encodeURIComponent(uuid)}`;
+}
+
+/**
  * URL opened when the user clicks a watch row.
  *
  * @param {string} baseURL - Normalized server URL without trailing slash.
@@ -86,7 +97,7 @@ export function siteUrl(watch) {
  * @returns {string} The server diff page when the watch has changed; otherwise siteUrl(watch), or baseURL when that is null.
  */
 export function primaryUrl(baseURL, watch) {
-  if (Number(watch.last_changed) > 0) return `${baseURL}/diff/${encodeURIComponent(watch.uuid)}`;
+  if (Number(watch.last_changed) > 0) return diffUrl(baseURL, watch.uuid);
   return siteUrl(watch) ?? baseURL;
 }
 
