@@ -9,7 +9,7 @@ import { formatRelativeTime } from '../lib/format.js';
 import { createLogger } from '../lib/log.js';
 import { ACTIONS, sendMessage } from '../lib/messages.js';
 import { isConfigured, loadSettings, requestHostPermission } from '../lib/settings.js';
-import { filterWatches, findWatchByUrl, isUnread, primaryUrl, sortWatches } from '../lib/watches.js';
+import { filterWatches, findWatchByUrl, isUnread, sortWatches } from '../lib/watches.js';
 import { buildWatchItem } from './watch-item.js';
 
 const log = createLogger('popup');
@@ -155,34 +155,35 @@ export class PopupManager {
   }
 
   /**
-   * Handle click and middle-click on a watch row.
+   * Handle click and middle-click on a watch row or its Diff link.
    *
    * @param {MouseEvent} event - click or auxclick event from the list.
-   * @returns {Promise<void>|undefined} The openWatch promise when a row was activated.
+   * @returns {Promise<void>|undefined} The openWatch promise when a row or Diff link was activated.
    */
   onListClick(event) {
-    const main = event.target.closest('.watch-main');
-    if (!main) return undefined;
+    const link = event.target.closest('.watch-main, .watch-diff');
+    if (!link) return undefined;
     if (event.type === 'auxclick' && event.button !== 1) return undefined;
     event.preventDefault();
-    const watch = this.watches.find((candidate) => candidate.uuid === main.closest('.watch-item').dataset.uuid);
+    const watch = this.watches.find((candidate) => candidate.uuid === link.closest('.watch-item').dataset.uuid);
     if (!watch) return undefined;
     const background = event.type === 'auxclick' || event.ctrlKey || event.metaKey;
-    return this.openWatch(watch, background);
+    return this.openWatch(watch, background, link.getAttribute('href'));
   }
 
   /**
-   * Open a watch (diff page when changed) and mark it viewed.
+   * Open one of a watch's links and mark the watch viewed.
    *
    * @param {import('../lib/watches.js').Watch} watch - The watch.
    * @param {boolean} background - Open the tab in the background and keep the popup open.
+   * @param {string} url - The clicked link's URL: the row's primaryUrl or the Diff link's diff page.
    * @returns {Promise<void>} Resolves when the service worker answered.
    */
-  async openWatch(watch, background) {
+  async openWatch(watch, background, url) {
     const request = {
       action: ACTIONS.OPEN_WATCH,
       uuid: watch.uuid,
-      url: primaryUrl(this.settings.baseURL, watch),
+      url,
       lastChanged: Number(watch.last_changed) || 0,
       background,
     };
